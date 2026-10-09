@@ -267,16 +267,22 @@ def test_not_found_alone_skips_expansion_for_extractor_and_blind_reader(tmp_path
     assert "Document-wide canonical text search: False" in provider.requests[0].prompt
 
 
-def test_explicit_search_request_still_triggers_expansion(tmp_path):
+@pytest.mark.parametrize("blind", [False, True])
+def test_explicit_search_request_is_recorded_without_expansion(tmp_path, blind):
     provider = CompactProvider(absent=True, search_requests=["Table 9 capacitor conditions"])
     e, _store = engine(tmp_path, provider)
     rid = e.create_run("parse", "target")
-    e.resume(rid, [3], review=False)
-    assert [r.task for r in provider.requests] == ["extract:3", "extract:3:expanded"]
-    assert "Document-wide canonical text search: True" in provider.requests[-1].prompt
+    section, *_ = e.read_retrieved(e.store.get("runs", rid), 3, blind=blind)
+    assert [r.task for r in provider.requests] == ["blind:3" if blind else "extract:3"]
+    assert "Document-wide canonical text search: False" in provider.requests[0].prompt
+    assert section.status == "ambiguous"
+    assert section.notes == [
+        "Evidence expansion disabled; unresolved evidence requests: Table 9 capacitor conditions"
+    ]
 
 
-def test_unreadable_still_triggers_expansion_without_search_request(tmp_path):
+@pytest.mark.parametrize("blind", [False, True])
+def test_unreadable_is_preserved_without_expansion(tmp_path, blind):
     class UnreadableProvider(CompactProvider):
         def generate(self, request):
             response = super().generate(request)
@@ -288,16 +294,22 @@ def test_unreadable_still_triggers_expansion_without_search_request(tmp_path):
     provider = UnreadableProvider()
     e, _store = engine(tmp_path, provider)
     rid = e.create_run("parse", "target")
-    e.read_retrieved(e.store.get("runs", rid), 3)
-    assert [r.task for r in provider.requests] == ["extract:3", "extract:3:expanded"]
+    section, *_ = e.read_retrieved(e.store.get("runs", rid), 3, blind=blind)
+    assert [r.task for r in provider.requests] == ["blind:3" if blind else "extract:3"]
+    assert section.status == "unreadable"
+    assert all(f.status == "unreadable" for f in section.findings)
 
 
-def test_expansion_does_not_receive_original_answer(tmp_path):
+def test_unresolved_search_continues_to_independent_blind_and_review_without_expansion(tmp_path):
     provider = CompactProvider(absent=True, search_requests=["Table 9 capacitor conditions"])
-    e, _store = engine(tmp_path, provider)
+    e, store = engine(tmp_path, provider)
     rid = e.create_run("parse", "target")
     e.resume(rid, [3])
-    assert any(r.task == "blind:3:expanded" for r in provider.requests)
+    assert [r.task for r in provider.requests] == ["extract:3", "blind:3", "review:3"]
+    assert "unresolved_evidence_request" in {
+        issue["code"] for issue in store.get("results", f"{rid}:3")["validation"]
+    }
+    assert store.get("blind_reads", f"{rid}:3:blind")["section"]["notes"]
 
 
 def test_compact_schema_preserves_quantities_conditions_and_target_ids(tmp_path):
@@ -393,7 +405,7 @@ def test_unseen_diagram_cannot_be_reported_as_confirmed_absence(tmp_path):
     store.put("regions", {**row, "text": "Figure 99. Unknown waveform"})
     page = store.get("pages", "parse:p3")
     store.put("pages", {**page, "text": "Figure 99. Unknown waveform"})
-    # Initial and expanded source selection intentionally miss this diagram to exercise the guard.
+    # Source selection intentionally misses this diagram to exercise the guard.
     original_packet = e.retrieval_packet
 
     def packet(*args, **kwargs):

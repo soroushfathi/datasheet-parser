@@ -154,44 +154,39 @@ class RetrievalWorkflow:
     def read_retrieved(self, run, sid, *, blind=False):
         model = section_contract(sid)
         stage = f"{'blind' if blind else 'extract'}:{sid}"
-        searches = []
-        all_allowed = set()
-        all_images = set()
-        for expanded in [False, True]:
-            packet = self.retrieval_packet(run, sid, complement=blind, expanded=expanded, searches=searches)
-            instruction = (
-                f"\nRole: {SECTIONS[sid][1]}. {'Independently read' if blind else 'Extract'} "
-                f"section {sid}: {SECTIONS[sid][0]}. You have no other extraction's answer.\n"
-                f"TARGET: {json.dumps(run['target'], ensure_ascii=False)}\n"
-                f"REQUIREMENTS: {json.dumps(requirements(sid))}\n"
-                "One finding for each requirement. Extract all rows, qualifiers, units, variants and footnotes. "
-                "Use evidence aliases exactly. Keep explanations empty for straightforward supported facts; "
-                "explain uncertainty, absence and conflict. Do not repeat facts in prose. "
-                "Only pins in section 1, existing application circuit/netlist in section 2. "
-                "Internal/block/test diagrams do not establish application wiring. Preserve unobserved vs NC. "
-                "search_requests: short source references/search phrases for missing evidence, otherwise []. "
-                "An unsuccessful retrieval does not establish not_found; request more evidence when needed. "
-                f"Document-wide canonical text search: {expanded}.\n{packet.text}"
-            )
-            output = self.call(
-                run["id"],
-                stage + (":expanded" if expanded else ""),
-                model,
-                instruction,
-                packet.images,
-                request_metrics=packet.metrics,
-                output_budget=16000,
-            )
-            raw = packet.decode(output.model_dump(mode="json"))
-            searches = raw["search_requests"]
-            section = expand_section(raw, sid, run["target"]["id"])
-            all_allowed.update(packet.allowed)
-            all_images.update(packet.image_pages)
-            # A not_found disposition alone no longer triggers a second model request.
-            needs_more = searches or any(f.status == Status.UNREADABLE for f in section.findings)
-            if not needs_more:
-                break
-        # Canonical text expansion cannot prove absence of information in unseen graphical evidence.
+        # Single source read: missing/unreadable evidence is recorded, never retried with expansion.
+        packet = self.retrieval_packet(run, sid, complement=blind)
+        # Keep the initial prompt unchanged so existing successful checkpoints remain reusable.
+        # search_requests now describe retrieval gaps for diagnostics only.
+        instruction = (
+            f"\nRole: {SECTIONS[sid][1]}. {'Independently read' if blind else 'Extract'} "
+            f"section {sid}: {SECTIONS[sid][0]}. You have no other extraction's answer.\n"
+            f"TARGET: {json.dumps(run['target'], ensure_ascii=False)}\n"
+            f"REQUIREMENTS: {json.dumps(requirements(sid))}\n"
+            "One finding for each requirement. Extract all rows, qualifiers, units, variants and footnotes. "
+            "Use evidence aliases exactly. Keep explanations empty for straightforward supported facts; "
+            "explain uncertainty, absence and conflict. Do not repeat facts in prose. "
+            "Only pins in section 1, existing application circuit/netlist in section 2. "
+            "Internal/block/test diagrams do not establish application wiring. Preserve unobserved vs NC. "
+            "search_requests: short source references/search phrases for missing evidence, otherwise []. "
+            "An unsuccessful retrieval does not establish not_found; request more evidence when needed. "
+            f"Document-wide canonical text search: False.\n{packet.text}"
+        )
+        output = self.call(
+            run["id"],
+            stage,
+            model,
+            instruction,
+            packet.images,
+            request_metrics=packet.metrics,
+            output_budget=16000,
+        )
+        raw = packet.decode(output.model_dump(mode="json"))
+        searches = raw["search_requests"]
+        section = expand_section(raw, sid, run["target"]["id"])
+        all_allowed = packet.allowed
+        all_images = set(packet.image_pages)
+        # Missing evidence in this packet cannot certify absence in unseen graphical evidence.
         _, retriever = self.retrieval_context(run)
         unseen = sorted(
             {
@@ -206,14 +201,13 @@ class RetrievalWorkflow:
         for finding in section.findings:
             if finding.status == Status.NOT_FOUND and unseen:
                 finding.status = Status.AMBIGUOUS
-                scope = "Document text" if expanded else "Retrieved source"
-                finding.reason = f"{scope} checked, but graphical pages {unseen} were not inspected."
+                finding.reason = f"Retrieved source checked, but graphical pages {unseen} were not inspected."
                 unresolved.append(finding.requirement_id)
         if unresolved and section.status == Status.NOT_FOUND:
             section.status = Status.AMBIGUOUS
         if searches:
             section.notes.append(
-                "Unresolved evidence requests after bounded expansion: " + "; ".join(searches)
+                "Evidence expansion disabled; unresolved evidence requests: " + "; ".join(searches)
             )
             section.status = Status.AMBIGUOUS
         return section, all_allowed, sorted(all_images), packet.metrics, unresolved
