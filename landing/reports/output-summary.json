@@ -1,0 +1,218 @@
+{
+  "run_id": "ce40e4a85acc4eb5",
+  "target": {
+    "manufacturer": "Texas Instruments",
+    "part_number": "MAX3232C",
+    "ordering_code": "MAX3232CD",
+    "package_name": "16-pin SOIC",
+    "package_code": "D",
+    "temperature_grade": "C: 0°C to 70°C"
+  },
+  "status": "needs_review",
+  "section_count": 17,
+  "claim_count": 313,
+  "issue_count": 145,
+  "sections": [
+    {
+      "section_id": 1,
+      "status": "conflicting",
+      "claim_count": 8,
+      "finding_statuses": {
+        "1.pads": "present",
+        "1.functions": "present",
+        "1.connections": "conflicting"
+      }
+    },
+    {
+      "section_id": 2,
+      "status": "present",
+      "claim_count": 16,
+      "finding_statuses": {
+        "2.circuits": "present",
+        "2.components": "present",
+        "2.connections": "present"
+      }
+    },
+    {
+      "section_id": 3,
+      "status": "present",
+      "claim_count": 20,
+      "finding_statuses": {
+        "3.voltages": "present",
+        "3.currents_power": "ambiguous",
+        "3.temperatures": "present",
+        "3.esd": "present"
+      }
+    },
+    {
+      "section_id": 4,
+      "status": "present",
+      "claim_count": 25,
+      "finding_statuses": {
+        "4.supply": "present",
+        "4.temperature": "present",
+        "4.logic": "present"
+      }
+    },
+    {
+      "section_id": 5,
+      "status": "ambiguous",
+      "claim_count": 17,
+      "finding_statuses": {
+        "5.rails": "present",
+        "5.sequencing": "ambiguous",
+        "5.decoupling": "ambiguous",
+        "5.bulk_startup": "ambiguous"
+      }
+    },
+    {
+      "section_id": 6,
+      "status": "ambiguous",
+      "claim_count": 12,
+      "finding_statuses": {
+        "6.equations": "ambiguous",
+        "6.types": "present",
+        "6.clock": "ambiguous"
+      }
+    },
+    {
+      "section_id": 7,
+      "status": "ambiguous",
+      "claim_count": 19,
+      "finding_statuses": {
+        "7.dimensions": "present",
+        "7.land_pattern": "ambiguous",
+        "7.orientation": "present"
+      }
+    },
+    {
+      "section_id": 8,
+      "status": "ambiguous",
+      "claim_count": 4,
+      "finding_statuses": {
+        "8.routing": "present",
+        "8.ground": "ambiguous",
+        "8.keepout": "present"
+      }
+    },
+    {
+      "section_id": 9,
+      "status": "ambiguous",
+      "claim_count": 32,
+      "finding_statuses": {
+        "9.current": "ambiguous",
+        "9.io": "ambiguous",
+        "9.specific": "ambiguous"
+      }
+    },
+    {
+      "section_id": 10,
+      "status": "ambiguous",
+      "claim_count": 26,
+      "finding_statuses": {
+        "10.protocols": "present",
+        "10.address": "conflicting",
+        "10.levels": "ambiguous"
+      }
+    },
+    {
+      "section_id": 11,
+      "status": "ambiguous",
+      "claim_count": 10,
+      "finding_statuses": {
+        "11.metrics": "present",
+        "11.protection": "ambiguous",
+        "11.layout": "ambiguous"
+      }
+    },
+    {
+      "section_id": 12,
+      "status": "ambiguous",
+      "claim_count": 13,
+      "finding_statuses": {
+        "12.clocks": "ambiguous",
+        "12.delays": "present",
+        "12.startup_reset": "ambiguous"
+      }
+    },
+    {
+      "section_id": 13,
+      "status": "ambiguous",
+      "claim_count": 7,
+      "finding_statuses": {
+        "13.features": "present",
+        "13.behavior": "present"
+      }
+    },
+    {
+      "section_id": 14,
+      "status": "ambiguous",
+      "claim_count": 52,
+      "finding_statuses": {
+        "14.identity": "present",
+        "14.grades": "conflicting",
+        "14.revision_lifecycle": "present"
+      }
+    },
+    {
+      "section_id": 15,
+      "status": "ambiguous",
+      "claim_count": 34,
+      "finding_statuses": {
+        "15.issues": "ambiguous",
+        "15.footnotes": "present",
+        "15.revision": "present"
+      }
+    },
+    {
+      "section_id": 16,
+      "status": "ambiguous",
+      "claim_count": 9,
+      "finding_statuses": {
+        "16.inventory": "present",
+        "16.conditions": "ambiguous"
+      }
+    },
+    {
+      "section_id": 17,
+      "status": "ambiguous",
+      "claim_count": 9,
+      "finding_statuses": {
+        "17.reflow": "ambiguous",
+        "17.assembly": "ambiguous",
+        "17.compliance": "ambiguous"
+      }
+    }
+  ],
+  "sample_claim": {
+    "id": "7.2",
+    "requirement_id": "7.dimensions",
+    "parameter": "Body length",
+    "kind": "dimension",
+    "raw_value": "0.394 (10,00) / 0.386 (9,80)",
+    "value": "MIN 0.386 in (9.80 mm); MAX 0.394 in (10.00 mm)",
+    "quantity": {
+      "minimum": 9.8,
+      "typical": null,
+      "maximum": 10.0,
+      "unit": "mm",
+      "expression": "0.386–0.394 in (9.80–10.00 mm)"
+    },
+    "conditions": [
+      "D (R-PDSO-G16)",
+      "Note C: Body length does not include mold flash, protrusions, or gate burrs."
+    ],
+    "applies_to": [
+      "394aa6ee9304e400"
+    ],
+    "evidence_ids": [
+      "2c0ac822b70de04b3bbb5cee:p19"
+    ],
+    "status": "present",
+    "explanation": ""
+  },
+  "limits": [
+    "Compact recorded summary, not the full extraction output.",
+    "Candidate reference pending human approval; no overall accuracy claimed."
+  ]
+}

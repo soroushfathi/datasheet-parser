@@ -1,0 +1,24 @@
+[Unit]
+Description=Datasheet Parser public case study
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+WorkingDirectory=/opt/datasheet-landing/current
+ExecStart=/usr/bin/python3 /opt/datasheet-landing/server.py --directory /opt/datasheet-landing/current --port 8094
+Restart=on-failure
+RestartSec=5
+CPUQuota=10%
+MemoryMax=64M
+TasksMax=32
+LimitNOFILE=128
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

@@ -4,6 +4,11 @@ A terminal-first, evidence-backed extraction workflow for electronic component d
 Select a supported model/package, extract all 17 required sections, independently reread the
 source, validate the result, and export JSON with unresolved issues intact.
 
+Interactive Persian case study: [live landing page](http://185.243.48.232:8094).
+It includes a scrolling CLI replay, architecture roles, scoped comparison results,
+recorded token/time usage and future-work accordions. Source and deployment details
+are in [`landing/README.md`](landing/README.md). The page serves static files only.
+
 ## نمای کلی معماری و نوع پردازش هر مرحله
 
 این فلو مسیر پیش‌فرض استخراج و بازبینی هر **۱۷ بخش و ۵۱ نیازمندی** را نشان می‌دهد.

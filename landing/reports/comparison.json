@@ -1,0 +1,524 @@
+{
+  "run_id": "ce40e4a85acc4eb5",
+  "reference_human_reviewed": false,
+  "inputs": [
+    {
+      "path": "D:\\Projects\\datasheet-parser\\outputs\\MAX3232CD-ce40e4a85acc4eb5.json",
+      "sha256": "0a0f980d67e7af0d09d7d9e62f22a0aafd9562cecd6d581f825c19fa48593dda"
+    },
+    {
+      "path": "D:\\Projects\\datasheet-parser\\references\\gold\\MAX3232CD\\reference.json",
+      "sha256": "b17ea4a336485a2fb13bfb04ae6fdddb1ce658d29a9753d15403f5f7e58e6744"
+    }
+  ],
+  "strict_evaluation": {
+    "claims": {
+      "precision": 0.0034482758620689655,
+      "recall": 0.0070921985815602835,
+      "f1": 0.004640371229698376,
+      "correct": 1,
+      "predicted": 290,
+      "expected": 141,
+      "false_positive": 289,
+      "false_negative": 140
+    },
+    "sections": {
+      "1": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 5,
+        "expected": 5,
+        "false_positive": 5,
+        "false_negative": 5
+      },
+      "2": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 15,
+        "expected": 4,
+        "false_positive": 15,
+        "false_negative": 4
+      },
+      "3": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 17,
+        "expected": 14,
+        "false_positive": 17,
+        "false_negative": 14
+      },
+      "4": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 25,
+        "expected": 10,
+        "false_positive": 25,
+        "false_negative": 10
+      },
+      "5": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 17,
+        "expected": 9,
+        "false_positive": 17,
+        "false_negative": 9
+      },
+      "6": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 12,
+        "expected": 2,
+        "false_positive": 12,
+        "false_negative": 2
+      },
+      "7": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 19,
+        "expected": 17,
+        "false_positive": 19,
+        "false_negative": 17
+      },
+      "8": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 2,
+        "expected": 3,
+        "false_positive": 2,
+        "false_negative": 3
+      },
+      "9": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 32,
+        "expected": 17,
+        "false_positive": 32,
+        "false_negative": 17
+      },
+      "10": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 23,
+        "expected": 7,
+        "false_positive": 23,
+        "false_negative": 7
+      },
+      "11": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 8,
+        "expected": 6,
+        "false_positive": 8,
+        "false_negative": 6
+      },
+      "12": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 13,
+        "expected": 11,
+        "false_positive": 13,
+        "false_negative": 11
+      },
+      "13": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 7,
+        "expected": 4,
+        "false_positive": 7,
+        "false_negative": 4
+      },
+      "14": {
+        "precision": 0.02040816326530612,
+        "recall": 0.1111111111111111,
+        "f1": 0.034482758620689655,
+        "correct": 1,
+        "predicted": 49,
+        "expected": 9,
+        "false_positive": 48,
+        "false_negative": 8
+      },
+      "15": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 30,
+        "expected": 16,
+        "false_positive": 30,
+        "false_negative": 16
+      },
+      "16": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 8,
+        "expected": 7,
+        "false_positive": 8,
+        "false_negative": 7
+      },
+      "17": {
+        "precision": 0.0,
+        "recall": null,
+        "f1": 0.0,
+        "correct": 0,
+        "predicted": 8,
+        "expected": 0,
+        "false_positive": 8,
+        "false_negative": 0
+      }
+    },
+    "pin_mapping": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 16,
+      "expected": 16,
+      "false_positive": 16,
+      "false_negative": 16
+    },
+    "net_connections": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 38,
+      "expected": 75,
+      "false_positive": 38,
+      "false_negative": 75
+    },
+    "component_values_and_terminals": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 18,
+      "expected": 36,
+      "false_positive": 18,
+      "false_negative": 36
+    },
+    "requirements": {
+      "disposition_matches": 31,
+      "reference_count": 51,
+      "answerable_coverage": 0.75,
+      "unnecessary_abstentions": 9,
+      "predicted_abstentions": 24
+    },
+    "limitations": [
+      "Text parameter names use normalized exact matching, not semantic grading.",
+      "Generated component identifiers must be aligned with the reference before netlist scoring.",
+      "Evidence entailment and completeness of reference require human review."
+    ]
+  },
+  "counts": {
+    "prediction_claims": 313,
+    "reference_claims": 147,
+    "prediction_sections": 17,
+    "reference_sections": 17
+  },
+  "aligned_pin_identity_and_type": {
+    "matched": 16,
+    "predicted": 16,
+    "reference": 16,
+    "scope": "Pad, normalized name, electrical type only; functions and connection requirements excluded."
+  },
+  "aligned_application_topologies": [
+    {
+      "prediction_circuit_id": "figure-9-1-gnd-return",
+      "c3_return": "GND",
+      "matched_pairs": 13,
+      "predicted_pairs": 13,
+      "reference_pairs": 13,
+      "extra": [],
+      "missing": [],
+      "scope": "Connectivity only; capacitor values, conditions, signal boundaries and layout are not scored.",
+      "alignment": "C1-C4 source +/- terminals map to reference generated 1/2 positive/negative terminals; supply variants share topology."
+    },
+    {
+      "prediction_circuit_id": "figure-9-1-vcc-return-alternative",
+      "c3_return": "VCC",
+      "matched_pairs": 12,
+      "predicted_pairs": 12,
+      "reference_pairs": 12,
+      "extra": [],
+      "missing": [],
+      "scope": "Connectivity only; capacitor values, conditions, signal boundaries and layout are not scored.",
+      "alignment": "C1-C4 source +/- terminals map to reference generated 1/2 positive/negative terminals; supply variants share topology."
+    }
+  ],
+  "selected_mechanical_numeric_checks": [
+    {
+      "prediction_claim": "7.2",
+      "reference_claim": "7.ref.001",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.3",
+      "reference_claim": "7.ref.002",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.4",
+      "reference_claim": "7.ref.003",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.6",
+      "reference_claim": "7.ref.004",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.9",
+      "reference_claim": "7.ref.005",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.10",
+      "reference_claim": "7.ref.006",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.11",
+      "reference_claim": "7.ref.007",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.8",
+      "reference_claim": "7.ref.008",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    },
+    {
+      "prediction_claim": "7.13",
+      "reference_claim": "7.ref.010",
+      "matching_numeric_bounds": true,
+      "scope": "Explicit parameter alignment; numeric bounds only, not full condition/footnote scoring."
+    }
+  ],
+  "finding_disagreements": [
+    {
+      "requirement_id": "3.currents_power",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Document text checked, but graphical pages [13] were not inspected."
+    },
+    {
+      "requirement_id": "5.sequencing",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "Power-up, power-down, and sequencing requirements were not located in the supplied excerpts. Page 10, Device Functional Modes, is absent, and document-wide canonical text search was not available."
+    },
+    {
+      "requirement_id": "5.decoupling",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "Capacitor values and permitted types are supplied. Placement requirements remain unobserved because page 13, Layout Guidelines and Layout Example, was not supplied."
+    },
+    {
+      "requirement_id": "5.bulk_startup",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Charge-pump storage capacitors are documented, but separate bulk capacitance, inrush, and soft-start requirements were not located in the supplied excerpts. The incomplete evidence does not establish document-wide absence."
+    },
+    {
+      "requirement_id": "6.equations",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Supplied evidence selects charge-pump capacitances by supply voltage using a table; no component calculation equation is shown. Document-wide absence cannot be established from the supplied excerpts."
+    },
+    {
+      "requirement_id": "6.clock",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "No external crystal or oscillator selection specification is shown in the supplied evidence. The charge-pump description and application circuit do not establish document-wide absence or explicit non-applicability."
+    },
+    {
+      "requirement_id": "7.land_pattern",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Supplied D-package evidence contains a mechanical drawing but no recommended land pattern, PCB pad dimensions, or stencil relationship. Document-wide canonical search is unavailable; additional source evidence is needed."
+    },
+    {
+      "requirement_id": "8.ground",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "The layout example labels Ground points but does not establish a ground plane, prescribed return paths or thermal-via requirements. Document-wide search evidence is unavailable."
+    },
+    {
+      "requirement_id": "9.current",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "No-load supply current is specified. Separate loaded operating-current and shutdown-current specifications are not located in the supplied excerpts; document-wide search was unavailable."
+    },
+    {
+      "requirement_id": "9.io",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "Input currents, receiver input resistance, output drive, slew rate, propagation delays and pulse skew are specified. Device input capacitance and separate device rise/fall times are not located in the supplied excerpts. The measurement diagrams specify generator rise/fall times, not device rise/fall times."
+    },
+    {
+      "requirement_id": "9.specific",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "The supplied electrical and switching tables are readable, but the recommended-operating-conditions table on page 4 is missing. Consequently, its electrical limits and the complete recommended ranges referenced by these tables cannot be extracted."
+    },
+    {
+      "requirement_id": "10.address",
+      "prediction_status": "conflicting",
+      "reference_status": "not_found",
+      "prediction_reason": "The documented interface comprises two logic-to-RS-232 drivers and two RS-232-to-logic receivers with per-channel truth tables; device addressing is not applicable to these documented functions. However, the design procedure names FORCEOFF and FORCEON inputs that do not appear in the complete pin table."
+    },
+    {
+      "requirement_id": "10.levels",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "Logic input limits, receiver levels and loading, and switching load conditions are available. The supplied page-5 evidence omits the driver electrical-characteristics table, preventing complete extraction of driver output levels and input loading."
+    },
+    {
+      "requirement_id": "11.protection",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Absolute junction-temperature limit and short-circuit dissipation precautions are supplied. Thermal shutdown and derating specifications cannot be established from the supplied excerpts; document-wide search was not available."
+    },
+    {
+      "requirement_id": "11.layout",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "The contents identify Layout Guidelines and Layout Example on page 13, but that page is not supplied. Copper-area and thermal-via recommendations remain unobserved."
+    },
+    {
+      "requirement_id": "12.clocks",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Data-rate limits are supplied, but clock-frequency limits by mode are not established. The supplied functional modes do not specify clocks; document-wide search was unavailable."
+    },
+    {
+      "requirement_id": "12.startup_reset",
+      "prediction_status": "ambiguous",
+      "reference_status": "not_found",
+      "prediction_reason": "Powered and unpowered behavior is described without startup or reset timing. The supplied evidence does not establish whether such timing is specified elsewhere."
+    },
+    {
+      "requirement_id": "14.grades",
+      "prediction_status": "conflicting",
+      "reference_status": "present",
+      "prediction_reason": "The selected MAX3232CD is consistently listed at 0 to 70 °C. However, MAX3232CDR1G4 and MAX3232CDR1G4.A are listed at −40 to 85 °C in the addendum, whereas the recommended operating conditions specify MAX3232C at 0 to 70 °C. MAX3232-EP is identified as another qualified version; the supplied evidence does not establish that qualification for MAX3232CD."
+    },
+    {
+      "requirement_id": "15.issues",
+      "prediction_status": "ambiguous",
+      "reference_status": "conflicting",
+      "prediction_reason": "No explicit known-device-issue or errata list is stated in the supplied excerpts. A short-circuit precaution is stated. The design procedure references FORCEOFF and FORCEON inputs absent from the supplied MAX3232 application figure, leaving their applicability unresolved. Document-wide evidence is incomplete."
+    },
+    {
+      "requirement_id": "16.conditions",
+      "prediction_status": "ambiguous",
+      "reference_status": "present",
+      "prediction_reason": "Explicit graph and waveform conditions are available. The supplied plots do not specify temperature or package and do not identify a safe operating area. Document-wide search was unavailable, so safe-operating-area coverage remains unresolved."
+    }
+  ],
+  "reference_errors_verified_against_source": [
+    {
+      "id": "driver_skew_column",
+      "reference_claim": "12.ref.002",
+      "prediction_claims": [
+        "9.17",
+        "12.3"
+      ],
+      "reference": "maximum = 300 ns",
+      "source": "typical = 300 ns; maximum column empty",
+      "verdict": "Prediction agrees with PDF; candidate reference is incorrect.",
+      "pdf_page": 6
+    },
+    {
+      "id": "receiver_skew_load_cell",
+      "reference_claim": "12.ref.007",
+      "prediction_claim": "12.8",
+      "reference_and_prediction": "CL = 150 pF applied to receiver pulse skew",
+      "source": "Merged CL = 150 pF cell ends after the two propagation-delay rows; receiver pulse-skew condition cell is blank.",
+      "verdict": "Both prediction and candidate reference overextend the condition; reviewer correctly flags this.",
+      "pdf_page": 6
+    }
+  ],
+  "selected_real_output_issues": [
+    {
+      "id": "other_grade_applies_to",
+      "claims": [
+        "4.4"
+      ],
+      "detail": "MAX3232I temperature range assigned to selected MAX3232C target."
+    },
+    {
+      "id": "other_ordering_grade_conflict",
+      "requirement": "14.grades",
+      "detail": "Conflict of CDR1G4 ordering codes changes selected CD finding to conflicting."
+    },
+    {
+      "id": "nominal_classified_typical",
+      "claims": [
+        "2.6"
+      ],
+      "detail": "0.1 uF bypass value classified as typical without source column designation."
+    },
+    {
+      "id": "numeric_bounds_left_as_prose",
+      "claims": [
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4",
+        "3.5",
+        "3.6",
+        "3.7",
+        "3.8"
+      ],
+      "detail": "Absolute voltage values agree in expressions, but all numeric min/max fields are null, unlike reference."
+    },
+    {
+      "id": "missing_pin_connections",
+      "detail": "Capacitor pin connection requirements omitted in section 1 although recorded in netlist section."
+    }
+  ],
+  "limits": [
+    "No overall semantic accuracy is claimed.",
+    "Strict zero scores can result from wording, figure names, condition segmentation or terminal conventions.",
+    "The 9 reference-present findings without present prediction status may contain partial correct facts; this is disposition-level coverage.",
+    "The reference contains verified errors and remains an unapproved candidate.",
+    "This run used earlier expanded reads for its initial sections and single reads for later sections.",
+    "Machine review issues were not automatically applied to the prediction."
+  ]
+}

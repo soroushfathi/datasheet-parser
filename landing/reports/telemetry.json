@@ -1,0 +1,22 @@
+{
+  "run_id": "ce40e4a85acc4eb5",
+  "model": "gpt-6.1-sol",
+  "reasoning": "medium",
+  "workers": 1,
+  "unique_completed_calls": 55,
+  "historical_expanded_calls": 4,
+  "input_tokens": 1944394,
+  "cached_input_tokens": 51712,
+  "output_tokens": 179823,
+  "reasoning_output_tokens": 13834,
+  "inference_seconds": 5166.99,
+  "wall_seconds": 6281,
+  "image_attachments": 442,
+  "api_dollar_cost": null,
+  "source": "Unique successful local checkpoints and Mongo run/events, recovered completions excluded.",
+  "limits": [
+    "Wall span includes interruptions and recovery.",
+    "Cached input is part of input; reasoning output is part of output.",
+    "No dollar invoice measured through Codex Pro CLI."
+  ]
+}

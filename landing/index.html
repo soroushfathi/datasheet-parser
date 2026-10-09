@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="description" content="روایت ساخت یک پایپلاین استخراج دیتاشیت: از PDF تا JSON، با شواهد، بازخوانی مستقل و ارزیابی قابل بررسی.">
+  <title>Datasheet Parser — از سند تا شاهد</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#journey">رفتن به معماری</a>
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Datasheet Parser، ابتدای صفحه" dir="ltr"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 3v8H3m18-8v8h8M3 21h8v8m18-8h-8v8"/><rect x="10" y="10" width="12" height="12" rx="2"/></svg>Datasheet<span>Parser</span></a>
+  <nav aria-label="منوی اصلی"><a href="#journey">مسیر استخراج</a><a href="#architecture">معماری</a><a href="#results">نتایج</a><a href="#cost">مصرف</a></nav>
+  <a class="nav-cta" href="#results">گزارش واقعی <span aria-hidden="true">↗</span></a>
+</header>
+<main id="top" class="page-shell">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="eyebrow" dir="ltr"><span class="live-dot"></span> AN ENGINEERING CASE STUDY <span>001 / 017</span></div>
+        <h1 id="hero-title" class="sr-only">از دیتاشیت تا خروجی ساختاریافته و قابل ردیابی</h1>
+        <div class="hero-stages" dir="ltr" aria-hidden="true">
+          <span class="hero-word active">Read the PDF.</span>
+          <span class="hero-word">Choose the target.</span>
+          <span class="hero-word">Trace the evidence.</span>
+          <span class="hero-word">Extract the facts.</span>
+          <span class="hero-word">Verify the output.</span>
+        </div>
+        <div class="hero-description"><p>از سند، تا شاهد.<br>از شاهد، تا یک پاسخ قابل بررسی.</p><span>یک مسیر ترکیبی از کد، heuristic و مدل زبانی برای استخراج هر ۱۷ بخش دیتاشیت؛ با انتخاب دقیق مدل و پکیج.</span></div>
+        <div class="hero-actions"><a class="button primary" href="#journey">مسیر را اسکرول کن <span>↓</span></a><a class="text-link" href="#architecture">معماری در یک نگاه ↗</a></div>
+      </div>
+      <div class="hero-visual" aria-label="نمای تصویریِ تبدیل دیتاشیت به شواهد و JSON">
+        <div class="blueprint-grid"></div>
+        <div class="visual-topline" dir="ltr"><span>MAX3232CD · SOIC-16</span><span class="tag">SOURCE → STRUCTURE</span></div>
+        <svg class="blueprint" viewBox="0 0 640 660" fill="none" aria-hidden="true">
+          <g class="ghost-traces" stroke="#c2ccd6" stroke-width="1"><path d="M0 84h110v72h160M42 0v110h120v80M530 0v130h-88v70M640 480h-98v-94M0 510h140v-80M500 660v-160M140 660v-100h66"/><path d="M0 610h70v-300h110M610 0v80H340v82M300 660v-100h-30"/></g>
+          <g stroke="#2582db" stroke-width="1.7"><rect x="217" y="220" width="210" height="270" rx="3"/><rect x="231" y="234" width="182" height="242" rx="1" stroke-dasharray="3 4"/><path d="M217 246h-35m35 30h-35m35 30h-35m35 30h-35m35 30h-35m35 30h-35m35 30h-35m35 30h-35M427 246h35m-35 30h35m-35 30h35m-35 30h35m-35 30h35m-35 30h35m-35 30h35m-35 30h35"/><path d="M182 246h-54v-78H60M182 306H88v54H18M182 396H120v150H45M462 246h64v-72h94M462 336h105v44h73M462 456h52v85h110M320 220v-80h66V65M320 490v90h85v80"/><circle cx="245" cy="249" r="5"/><circle cx="128" cy="168" r="4"/><circle cx="88" cy="360" r="4"/><circle cx="120" cy="546" r="4"/><circle cx="526" cy="174" r="4"/><circle cx="567" cy="380" r="4"/><circle cx="514" cy="541" r="4"/><circle cx="320" cy="140" r="4"/></g>
+          <g class="signal-trace" stroke="#2582db" stroke-width="3"><path d="M18 360h70v-54h94M462 336h105v44h73M320 490v90h85v80"/></g>
+          <g font-family="Consolas,monospace" text-anchor="middle"><text x="322" y="324" fill="#426382" font-size="12" letter-spacing="4">TI · TRANSCEIVER</text><text x="322" y="364" fill="#143454" font-size="28">MAX3232</text><text x="322" y="391" fill="#6a859f" font-size="12">16 PIN / SOIC (D)</text></g>
+          <g fill="#63829e" font-family="Consolas,monospace" font-size="11"><text x="70" y="152">C1+</text><text x="74" y="290">V+</text><text x="477" y="319">DIN1</text><text x="476" y="438">VCC</text><text x="332" y="530">GND</text><text x="225" y="208">PIN 01</text><text x="453" y="228">16</text></g>
+          <path d="M195 199h-12v12m256-12h12v12M195 511h-12v-12m256 12h12v-12" stroke="#96b9d9"/>
+        </svg>
+        <div class="source-tab"><span class="tiny-label" dir="ltr">SOURCE / PAGE 11</span><img src="assets/max3232-p11.png" alt="صفحهٔ ۱۱ دیتاشیت MAX3232، مدار کاربردی و اتصال خازن‌ها" width="918" height="1188"></div>
+        <div class="evidence-callout" dir="ltr"><span class="crosshair">⌖</span><div><span class="tiny-label">EVIDENCE ANCHOR</span><code>p11 · Figure 9-1</code></div><span class="verified-dot">●</span></div>
+        <div class="floating-output" dir="ltr"><div class="floating-head"><span><i></i> extraction.json</span><span>SCHEMA v1.0</span></div><pre><span class="muted">{</span>
+  <span class="json-key">"target"</span>: <span class="json-string">"MAX3232CD"</span>,
+  <span class="json-key">"sections"</span>: <span class="json-number">17</span>,
+  <span class="json-key">"status"</span>: <span class="json-string">"needs_review"</span>
+<span class="muted">}</span></pre></div>
+        <span class="visual-index" dir="ltr">DOC → TARGET → EVIDENCE → JSON</span>
+      </div>
+    </div>
+    <div class="hero-foot"><span>دیتاشیت را بخوان. تصمیم‌ها را قابل ردیابی کن.</span><span dir="ltr">SCROLL TO FOLLOW THE PIPELINE <span class="down-arrow">↓</span></span></div>
+  </section>
+
+  <div class="facts-strip"><div><strong dir="ltr">17</strong><span>بخش الزامی</span></div><div><strong dir="ltr">51</strong><span>نیازمندی صریح</span></div><div><strong>۱ هدف</strong><span>برای هر اجرای مستقل</span></div><div><strong dir="ltr">JSON</strong><span>همراه شاهد و ابهام</span></div></div>
+
+  <section id="journey" class="journey" aria-labelledby="journey-title">
+    <div class="section-heading"><span class="eyebrow" dir="ltr">01 / FOLLOW THE EXECUTION</span><h2 id="journey-title">یک سند.<br>لایه‌به‌لایه تا پاسخ.</h2><p>با اسکرول، کامندها و خروجی نمایشی عوض می‌شوند. هر لایه یک مسئولیت مشخص دارد.</p></div>
+    <div class="journey-layout">
+      <div class="terminal-track"><div class="terminal-sticky">
+        <div class="terminal-window" dir="ltr"><div class="terminal-bar"><span class="window-dots"><i></i><i></i><i></i></span><span>datasheet-parser / powershell</span><span id="terminal-progress">01 / 07</span></div><div class="terminal-body"><div class="terminal-path"><span>PS</span> D:\Projects\datasheet-parser&gt;</div><div class="terminal-command"><span class="prompt-symbol">❯</span><code id="terminal-command"></code><span class="cursor" aria-hidden="true"></span></div><div id="terminal-output" class="terminal-output" aria-live="off"></div></div><div class="terminal-footer"><span><i></i> REPLAY · NO LIVE INFERENCE</span><button id="replay" type="button">Replay ↻</button></div></div>
+        <div class="terminal-meta"><span id="terminal-role" class="node-label">CODE</span><span>بازپخش نمایشی؛ هیچ کامندی روی سرور اجرا نمی‌شود.</span></div>
+        <div id="step-dots" class="step-dots" aria-label="انتخاب مرحله"></div>
+      </div></div>
+      <div id="story-steps" class="story-steps"></div>
+    </div>
+  </section>
+
+  <section id="architecture" class="architecture section-pad" aria-labelledby="architecture-title">
+    <div class="section-heading split-heading"><div><span class="eyebrow" dir="ltr">02 / THE SYSTEM, AT A GLANCE</span><h2 id="architecture-title">معماری در یک نگاه.</h2></div><p>یک orchestration ترتیبی با نقش‌های مستقل AI. کد ساختار و شواهد را کنترل می‌کند؛ مدل‌ها سند را تفسیر می‌کنند.</p></div>
+    <div class="legend"><span><i class="code-dot"></i>Code</span><span><i class="heuristic-dot"></i>Heuristic</span><span><i class="ai-dot"></i>AI</span><span><i class="human-dot"></i>Human</span></div>
+    <div class="arch-flow" id="arch-flow"></div>
+    <div class="arch-detail" id="arch-detail" aria-live="polite"><span class="tiny-label" dir="ltr">SELECT A NODE</span><p>روی هر نود بزن تا مسئولیت و تابع اصلی آن را ببینی.</p></div>
+    <div class="infrastructure"><div><span class="tiny-label" dir="ltr">DOCUMENT LAYER</span><h3>متن + جدول + تصویر</h3><p>PDFium و pdfplumber؛ مختصات و شناسهٔ هر شاهد حفظ می‌شود. جدول و پاورقی به هم مرتبط می‌مانند.</p></div><div><span class="tiny-label" dir="ltr">PERSISTENCE</span><h3>MongoDB + GridFS</h3><p>سند، اجرا، coverage و review در MongoDB؛ فایل‌ها در GridFS؛ checkpoint محلی برای بازیابی پاسخ موفق.</p></div><div><span class="tiny-label" dir="ltr">OBSERVABILITY</span><h3>Trace، نه حدس.</h3><p>زمان، توکن‌ها، تلاش‌ها و اندازهٔ ورودی ثبت می‌شوند. status / trace / coverage وضعیت اجرا را نشان می‌دهند.</p></div></div>
+    <p class="architecture-note">مدل این اجرای گزارش‌شده: <bdi>gpt-6.1-sol / medium</bdi>. سه نقش استخراج، blind read و review از همین مدل استفاده کردند. گسترش خودکار <bdi>expanded</bdi> اکنون غیرفعال است.</p>
+  </section>
+
+  <section id="results" class="results section-pad" aria-labelledby="results-title">
+    <div class="section-heading split-heading"><div><span class="eyebrow" dir="ltr">03 / MEASURED, NOT ASSUMED</span><h2 id="results-title">نتیجه‌ای که<br>می‌شود بررسی‌اش کرد.</h2></div><div><p>مقایسهٔ خروجی واقعی MAX3232CD / SOIC-16 (D) با مرجع مستقل پیشنهادی. هر عدد، دامنهٔ خودش را دارد.</p><span class="report-badge"><i></i> مرجع در انتظار تأیید انسانی</span></div></div>
+    <div class="result-metrics"><article><span class="metric-number" dir="ltr">16<span>/16</span></span><h3>هویت و نوع پایه</h3><p>شماره، نام نرمال‌شده و electrical type؛ شامل صحت تمام توابع و الزام‌های اتصال نیست.</p></article><article><span class="metric-number" dir="ltr">25<span>/25</span></span><h3>زوج اتصال مدار</h3><p>دو حالت بازگشت C3، پس از هم‌ترازکردن ترمینال‌ها؛ مستقل از مقادیر و شرایط خازن.</p></article><article><span class="metric-number" dir="ltr">75<span>%</span></span><h3>پوشش نیازمندی‌های پاسخ‌دار</h3><p>۲۷ از ۳۶ نیازمندیِ present در مرجع، در خروجی هم present اعلام شده‌اند.</p></article><article><span class="metric-number" dir="ltr">9<span>/9</span></span><h3>حدود عددی مکانیکی</h3><p>۹ پارامتر منتخب و صریحاً هم‌تراز؛ این عدد امتیاز کامل footprint نیست.</p></article></div>
+    <div class="results-body"><div class="report-table-wrap"><div class="table-heading"><h3>چه چیزی پیدا شد؟</h3><span dir="ltr">RUN ce40e4a85acc4eb5</span></div><table><thead><tr><th>کنترل</th><th>نتیجه</th><th>تفسیر</th></tr></thead><tbody><tr><td>پوشش ساختاری</td><td><bdi>17 / 17</bdi></td><td>هر ۱۷ بخش استخراج و بازبینی شده‌اند.</td></tr><tr><td>توافق وضعیت نیازمندی‌ها</td><td><bdi>31 / 51</bdi></td><td>حدود ۶۱٪ توافق status؛ درصد دقت ادعاها نیست.</td></tr><tr><td>تعداد ادعاها</td><td><bdi>313 vs. 147</bdi></td><td>دامنه و تفکیک متفاوت؛ بیشتر بودن یعنی دقیق‌تر بودن نیست.</td></tr><tr><td>Exact-match F1</td><td><bdi>0.46%</bdi></td><td>به نام‌ها، expression و متن شرایط حساس است؛ برای accuracy معنایی معتبر نیست.</td></tr><tr><td>وضعیت نهایی</td><td><span class="status-pill">needs_review</span></td><td>۱۴۵ رکورد خطا، هشدار یا ابهام؛ نه ۱۴۵ پاسخ غلط.</td></tr></tbody></table></div><aside class="finding-note"><span class="tiny-label" dir="ltr">THE REFERENCE CAN BE WRONG, TOO.</span><h3>حتی مرجع را<br>بازبینی کردیم.</h3><p>در جدول اصلی، skew درایور <bdi>TYP = 300 ns</bdi> است؛ مرجع آن را MAX ثبت کرده بود. در این مورد، خروجی سیستم درست بود.</p><p>شرط <bdi>CL = 150 pF</bdi> نیز نباید از دو ردیف تأخیر گیرنده به ردیف skew تعمیم داده شود؛ این خطا در هر دو فایل وجود داشت.</p><a href="assets/max3232-p6.png" target="_blank" rel="noopener">دیدن جدول اصلی، صفحهٔ ۶ ↗</a></aside></div>
+    <div class="report-errors"><span class="tiny-label" dir="ltr">OPEN FINDINGS</span><p>سرایت دمای گرید I به C · خالی‌ماندن min/max با وجود عدد در متن · طبقه‌بندی nominal به‌عنوان typical · الزام‌های اتصال جاافتاده</p><span>Review ایرادها را ثبت می‌کند؛ پاسخ استخراج فعلاً خودکار اصلاح نمی‌شود.</span></div>
+    <div class="download-row"><a class="button primary" href="reports/comparison.json" download>دانلود گزارش مقایسه <span>↓</span></a><a class="button secondary" href="reports/evaluation.json" download>خروجی خام evaluator <span>↓</span></a><button class="text-link" id="show-sample" type="button">نمونهٔ JSON خروجی ↗</button></div>
+  </section>
+
+  <section id="cost" class="cost section-pad" aria-labelledby="cost-title">
+    <div class="section-heading split-heading"><div><span class="eyebrow" dir="ltr">04 / THE COST OF READING CAREFULLY</span><h2 id="cost-title">دقت، بودجه می‌خواهد.<br>بودجه، اندازه‌گیری.</h2></div><p>مصرف ثبت‌شدهٔ همان اجرای واقعی؛ این اجرا در بخش‌های ابتدایی چهار expanded داشته و در ادامه با مسیر بدون گسترش تمام شده است.</p></div>
+    <div class="cost-metrics"><div><span>توکن ورودی</span><strong dir="ltr">1.94<span>M</span></strong><small dir="ltr">1,944,394 tokens</small></div><div><span>توکن خروجی</span><strong dir="ltr">179.8<span>K</span></strong><small dir="ltr">179,823 tokens</small></div><div><span>مجموع زمان inference</span><strong dir="ltr">86.1<span>min</span></strong><small>جمع زمان ۵۵ درخواست موفق یکتا</small></div><div><span>هزینهٔ دلاری API</span><strong class="unpriced">ثبت نشده</strong><small>اجرای Codex Pro CLI؛ بدون صورتحساب API</small></div></div>
+    <div class="cost-breakdown"><div class="cost-chart"><div class="chart-title"><span>زمان صرف‌شده در هر نقش</span><span dir="ltr">86.12 MIN TOTAL</span></div><div class="stacked-bar"><span class="extract-bar" style="width:44.77%" aria-label="استخراج: ۳۸٫۵۵ دقیقه"></span><span class="blind-bar" style="width:38.11%" aria-label="بازخوانی: ۳۲٫۸۲ دقیقه"></span><span class="review-bar" style="width:17.12%" aria-label="بازبینی: ۱۴٫۷۴ دقیقه"></span></div><div class="chart-legend"><span><i class="extract-bar"></i>Extract <bdi>38.55 min</bdi></span><span><i class="blind-bar"></i>Blind <bdi>32.82 min</bdi></span><span><i class="review-bar"></i>Review <bdi>14.74 min</bdi></span></div></div><div class="cost-detail"><p><strong>۵۵</strong> درخواست موفق یکتا: ۱۹ استخراج، ۱۹ بازخوانی و ۱۷ بازبینی.</p><p>زمان دیواری <bdi>104 min 41 s</bdi> شامل توقف و بازیابی است؛ benchmark بدون وقفه نیست.</p><p><bdi>51,712</bdi> توکن cached جزئی از ورودی، و <bdi>13,834</bdi> توکن reasoning جزئی از خروجی است؛ دوباره جمع نشده‌اند.</p></div></div>
+    <div class="optimization-note"><span dir="ltr">LESS INPUT. SAME QUESTION.</span><p>در مقایسهٔ آفلاین بستهٔ شواهد بخش نت‌لیست، ورودی متنی حدود ۸۲٪ و تعداد تصاویر ۵۶٪ کمتر از مسیر legacy شد. این کاهش ورودی، ادعای افزایش accuracy یا کاهش اندازه‌گیری‌شدهٔ زمان کل نیست.</p></div>
+  </section>
+
+  <section id="next" class="next section-pad" aria-labelledby="next-title"><div class="section-heading split-heading"><div><span class="eyebrow" dir="ltr">05 / WHAT COMES NEXT</span><h2 id="next-title">مسیر بعدی،<br>بدون وعدهٔ اندازه‌گیری‌نشده.</h2></div><p>گزینه‌های زیر نقشهٔ توسعه‌اند. در نتیجهٔ فعلی فعال نیستند و به benchmark و دادهٔ معتبر نیاز دارند.</p></div>
+    <div class="accordion">
+      <details><summary><span class="accordion-index" dir="ltr">01</span><span>مدل‌های تصمیم‌گیرنده و fine-tuning</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><span class="out-of-scope">خارج از محدودهٔ زمانی این تسک</span><p>تصمیم‌های محدود مانند انتخاب صفحه، نوع بخش، ارتباط شاهد با هدف و نیاز به بررسی انسانی را می‌توان به یک مدل decision سپرد. استخراج کامل JSON همچنان وظیفهٔ جداگانه‌ای است.</p><p><bdi>pplx-decider-v1.1-27b</bdi> یک checkpoint تصمیم‌گیری با readout جداگانه است. استفاده و fine-tuning برای این مسئله، پیشنهاد پژوهشی است و هنوز اجرا یا ارزیابی نشده. باید با برچسب‌های صفحات و شواهد درست/نادرست و مجموعهٔ آزمون مستقل بررسی شود.</p><p class="technical-note">طبق model card، مسیر inference اختصاصی باید حفظ شود؛ سقف ورودی ۸٬۱۹۲ توکن است و وزن‌های اعلام‌شده حدود ۴۹ GiB حافظه می‌خواهند، به‌علاوهٔ حافظهٔ کاری. صرف نصب مدل، تضمین سرعت یا دقت نیست.</p><a href="https://huggingface.co/perplexity-ai/pplx-decider-v1.1-27b" target="_blank" rel="noopener">Model card رسمی در Hugging Face ↗</a></div></details>
+      <details><summary><span class="accordion-index" dir="ltr">02</span><span>مدل‌های کوچک‌تر و ارزان‌تر برای نقش‌های محدود</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><p>مدل سبک‌تر برای classification و routing؛ مدل قوی‌تر برای جدول، مدار و بازبینی موارد حساس. معماری LLM Provider محل تعویض backend را دارد، ولی مسیردهی خودکار به مدل متفاوت برای هر نقش هنوز پیاده‌سازی نشده است.</p><p>تصمیم انتخاب مدل باید با هزینهٔ واقعی، زمان، پوشش و خطاهای بحرانی سنجیده شود. فعلاً هیچ درصد دقت یا صرفه‌جویی برای یک مدل جایگزین اعلام نمی‌کنیم.</p></div></details>
+      <details><summary><span class="accordion-index" dir="ltr">03</span><span>چطور زمان اجرا را کمتر کنیم؟</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><p>محدودکردن دقیق شواهد به مدل و پکیج، برش معتبر تصویر به‌جای صفحهٔ کامل، حذف شرایط تکراری از پاسخ و رساندن فقط شواهد موردنیاز به reviewer. هر تغییر باید با پاسخ مرجع ثابت سنجیده شود.</p><p>پشتیبانی از دو worker در کد وجود دارد؛ اجرای گزارش‌شده با یک worker انجام شد. موازی‌سازی می‌تواند زمان دیواری را کم کند، اما تعداد توکن‌ها را خودبه‌خود کم نمی‌کند و اثرش هنوز benchmark نشده است. گسترش خودکار اکنون غیرفعال است.</p></div></details>
+      <details><summary><span class="accordion-index" dir="ltr">04</span><span>بهبود retrieval و ارتباط صفحات دور</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><p>ایندکس فعلی عنوان، متن، جدول، پاورقی و ارجاع‌ها را نگه می‌دارد. BM25 بر متن دارای context اجرا می‌شود و لینک‌های صریح تا دو hop دنبال می‌شوند؛ بنابراین نزدیکی صفحه تنها معیار انتخاب نیست.</p><p>Embedding و reranker محلی به‌صورت اختیاری پشتیبانی می‌شوند، ولی در این اجرا فعال نبودند. مرحلهٔ بعد، سنجش recall شاهد و تشخیص اینکه خطا از انتخاب منبع آمده یا از خواندن آن است.</p></div></details>
+      <details><summary><span class="accordion-index" dir="ltr">05</span><span>ارزیابی بهتر، مرجع بهتر</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><p>نام استاندارد پارامتر، واحد و قرارداد ثابت min/typ/max، هم‌ترازی ترمینال‌های مدار و نمرهٔ جداگانه برای عدد، شرط، هدف و استناد. Exact-matchِ متن آزاد برای سنجش accuracy کافی نیست.</p><p>مرجع فعلی candidate است. ابتدا خطاهای پیدا‌شده در آن اصلاح و تأیید انسانی ثبت می‌شود؛ سپس یک نسخهٔ ثابت برای مقایسهٔ معماری‌ها نگه می‌داریم. دادهٔ gold نباید وارد پرامپت استخراج شود.</p></div></details>
+      <details><summary><span class="accordion-index" dir="ltr">06</span><span>از بازبینی تا اصلاح قابل ردیابی</span><span class="accordion-plus" aria-hidden="true">+</span></summary><div class="accordion-content"><p>بازبین فعلی مسئله‌ها را ثبت می‌کند و جواب اول را بازنویسی نمی‌کند. قدم بعدی، اصلاح محدود به ادعاهای مسئله‌دار با شاهد اصلی، حفظ نسخهٔ قبل و بعد، و اجرای دوبارهٔ validator است.</p><p>توافق دو مدل به‌تنهایی مدرک صحت نیست. وضعیت ambiguous یا needs_review باید قابل مشاهده بماند تا جواب نامطمئن به پاسخ قطعی تبدیل نشود.</p></div></details>
+    </div>
+  </section>
+  <footer class="footer"><a class="brand" href="#top" dir="ltr">Datasheet<span>Parser</span><span class="footer-arrow">↑</span></a><p>سند، شاهد، پاسخ؛ با مسیر برگشت به منبع.</p><span dir="ltr">CASE STUDY · OCT 2026</span></footer>
+</main>
+<dialog id="json-dialog"><div class="dialog-header"><span dir="ltr">extraction.json · compact preview</span><button id="close-dialog" type="button" aria-label="بستن نمونهٔ JSON">×</button></div><p>خلاصهٔ واقعی همان اجرا؛ لیست کامل ادعاها در این پیش‌نمایش نمایش داده نمی‌شود.</p><pre id="json-sample" dir="ltr"></pre><a href="reports/output-summary.json" download>دانلود خلاصهٔ ساختاریافته ↓</a></dialog>
+</body>
+</html>
