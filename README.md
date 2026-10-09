@@ -9,6 +9,12 @@ It includes a scrolling CLI replay, architecture roles, scoped comparison result
 recorded token/time usage and future-work accordions. Source and deployment details
 are in [`landing/README.md`](landing/README.md). The page serves static files only.
 
+این پروژه و نتایج گزارش‌شده با **Codex CLI** و ورود حساب **ChatGPT Pro** اجرا شده‌اند؛
+برای آن اجراها کلید OpenAI API استفاده نشده است. برای اجرای پروژه روی سیستم خودتان،
+می‌توانید **Codex CLI** را نصب و وارد حساب خود شوید، یا **OpenAI API Key** را در `.env`
+قرار دهید و provider را `openai` انتخاب کنید. راهنمای هر دو مسیر در
+[بخش LLM providers](#llm-providers) آمده است.
+
 ## نمای کلی معماری و نوع پردازش هر مرحله
 
 این فلو مسیر پیش‌فرض استخراج و بازبینی هر **۱۷ بخش و ۵۱ نیازمندی** را نشان می‌دهد.
@@ -195,6 +201,9 @@ Requires Python 3.11+ (development uses 3.13), uv, and MongoDB. The default infe
 is Codex CLI signed in with ChatGPT. OpenAI API, external-worker and exact-request replay
 transports use the same contracts.
 
+After creating `.env`, configure **one inference provider** using the instructions below
+before running `doctor`, `smoke` or extraction. The MongoDB setup is shared by both paths.
+
 ```powershell
 cd D:\Projects\datasheet-parser
 uv sync --extra dev --python 3.13
@@ -309,6 +318,72 @@ No SQLite or Neo4j is required. Explicit edges represent source/requirement rela
 typed circuit nets represent electrical connections separately. References are checked by code.
 
 ## LLM providers
+
+### How this project was run
+
+I used **Codex CLI authenticated with my ChatGPT Pro account** for the reported MAX3232CD
+extraction and evaluation case study. The recorded extraction run requested
+`gpt-6.1-sol` with `reasoning=medium`. It did not use an OpenAI API key. The repository's
+default model/reasoning settings may differ from that recorded run.
+
+To run the project yourself, choose either Codex CLI or the direct OpenAI API provider.
+Both use the same extraction schemas and evidence workflow; model availability and usage
+depend on your own account.
+
+### Option 1: Codex CLI with ChatGPT sign-in
+
+Install [Codex CLI using the official instructions](https://learn.chatgpt.com/docs/codex/cli)
+and make the `codex` executable available in your terminal. Then sign in with your own
+ChatGPT account:
+
+```powershell
+codex login
+codex login status
+```
+
+Set these values in the project's `.env`:
+
+```dotenv
+DATASHEET_PROVIDER=codex
+DATASHEET_MODEL=gpt-6.1-sol
+DATASHEET_REASONING=medium
+```
+
+Use a model available to your Codex account. With ChatGPT sign-in, this path does not
+require `OPENAI_API_KEY`; it consumes your account's Codex usage allowance. If Codex is
+installed but missing from PATH, see [Connection troubleshooting](#connection-troubleshooting).
+See the [official authentication guide](https://learn.chatgpt.com/docs/auth) for sign-in details.
+
+### Option 2: OpenAI API key
+
+Set these values in `.env`, replacing the placeholders with your own API key and a model
+ID available to your API account:
+
+```dotenv
+DATASHEET_PROVIDER=openai
+OPENAI_API_KEY=<your-api-key>
+DATASHEET_MODEL=<your-api-model-id>
+DATASHEET_REASONING=medium
+```
+
+Choose an API model that supports image input, structured outputs and the configured
+reasoning setting. This path calls the Responses API directly and does not require
+Codex CLI or `codex login`. API usage is billed separately from a ChatGPT subscription;
+the key alone does not switch providers, so set `DATASHEET_PROVIDER=openai` as well.
+Keep the actual key in your local `.env`, which is excluded from Git.
+
+### Verify your selected provider
+
+After configuring either option (and starting the MongoDB tunnel for `doctor`), run:
+
+```powershell
+uv run datasheet doctor
+uv run datasheet smoke
+uv run datasheet run 'C:\path\to\datasheet.pdf' --output .\outputs\result.json
+```
+
+`smoke` makes a small real inference request. New extraction runs record the selected
+provider, model and reasoning settings; resuming an existing run keeps its original settings.
 
 | Provider | Configuration | Behavior |
 |---|---|---|
