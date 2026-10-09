@@ -23,15 +23,23 @@ class EvidencePacket:
         return set(self.aliases.values())
 
     def decode(self, response):
-        def visit(value, key=""):
+        def resolve(value, path):
+            # Source labels are rendered as [eN], so either literal representation is valid.
+            # Never guess an alias or accept a region that was absent from this packet.
+            alias = value.strip() if isinstance(value, str) else value
+            if isinstance(alias, str) and re.fullmatch(r"\[e\d+\]", alias):
+                alias = alias[1:-1]
+            if not isinstance(alias, str) or alias not in self.aliases:
+                raise ValueError(f"Unknown or unsupplied evidence alias at {path}: {value!r}")
+            return self.aliases[alias]
+
+        def visit(value, key="", path="$"):
             if isinstance(value, dict):
-                return {k: visit(v, k) for k, v in value.items()}
+                return {k: visit(v, k, f"{path}.{k}") for k, v in value.items()}
             if isinstance(value, list):
                 if key in {"evidence_ids", "reviewed_region_ids"}:
-                    if any(v not in self.aliases for v in value):
-                        raise ValueError("Unknown or unsupplied evidence alias")
-                    return [self.aliases[v] for v in value]
-                return [visit(v) for v in value]
+                    return [resolve(v, f"{path}[{i}]") for i, v in enumerate(value)]
+                return [visit(v, path=f"{path}[{i}]") for i, v in enumerate(value)]
             return value
 
         return visit(response)

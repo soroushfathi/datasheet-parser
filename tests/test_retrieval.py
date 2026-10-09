@@ -11,7 +11,7 @@ from test_core import TARGET
 from datasheet_parser.config import Settings
 from datasheet_parser.document_index import ensure_index
 from datasheet_parser.engine import Engine
-from datasheet_parser.evidence_packet import build_packet
+from datasheet_parser.evidence_packet import EvidencePacket, build_packet
 from datasheet_parser.requirements import requirements
 from datasheet_parser.retrieval import Retriever
 from datasheet_parser.store import MemoryStore
@@ -137,6 +137,33 @@ def test_aliases_reject_unsupplied_source_and_round_trip(tmp_path):
         packet.decode({"claims": [{"evidence_ids": ["parse:p999"]}]})
 
 
+def test_bracketed_citations_resolve_in_all_nested_evidence_fields():
+    packet = EvidencePacket("", [], {"e0": "parse:p1", "e19": "parse:p1:l3"}, [], [], {})
+    response = {
+        "findings": [{"evidence_ids": ["[e0]", "e19"]}],
+        "claims": [{"evidence_ids": [" [e19] "]}],
+        "pins": [{"evidence_ids": ["[e0]"]}],
+        "circuits": [{"components": [{"evidence_ids": ["[e19]"]}]}],
+        "reviewed_region_ids": ["[e0]"],
+        "reason": "Keep [e19] prose unchanged",
+    }
+    decoded = packet.decode(response)
+    assert decoded["findings"][0]["evidence_ids"] == ["parse:p1", "parse:p1:l3"]
+    assert decoded["claims"][0]["evidence_ids"] == ["parse:p1:l3"]
+    assert decoded["pins"][0]["evidence_ids"] == ["parse:p1"]
+    assert decoded["circuits"][0]["components"][0]["evidence_ids"] == ["parse:p1:l3"]
+    assert decoded["reviewed_region_ids"] == ["parse:p1"]
+    assert decoded["reason"] == response["reason"]
+    assert response["findings"][0]["evidence_ids"][0] == "[e0]"
+
+
+@pytest.mark.parametrize("citation", ["[e999]", "[e0,e19]", "[e0] extra", "eN", "parse:p999", None])
+def test_citation_normalization_cannot_introduce_unsupplied_evidence(citation):
+    packet = EvidencePacket("", [], {"e0": "parse:p1"}, [], [], {})
+    with pytest.raises(ValueError, match=r"\$\.claims\[0\]\.evidence_ids\[0\]"):
+        packet.decode({"claims": [{"evidence_ids": [citation]}]})
+
+
 class CompactProvider:
     def __init__(self, absent=False):
         self.requests = []
@@ -179,6 +206,36 @@ def engine(tmp_path, provider):
     store.put("catalogs", {"id": "parse", "targets": [TARGET], "ambiguities": []})
     settings = Settings(mongo_uri="unused", work_dir=tmp_path, retrieval_top_k=1)
     return Engine(store, provider, settings), store
+
+
+def test_resume_recovers_bracketed_response_checkpoint_without_new_inference(tmp_path, monkeypatch):
+    class BracketedProvider(CompactProvider):
+        def generate(self, request):
+            response = super().generate(request)
+            for finding in response["findings"]:
+                finding["evidence_ids"] = [f"[{alias}]" for alias in finding["evidence_ids"]]
+            return response
+
+    provider = BracketedProvider()
+    e, store = engine(tmp_path, provider)
+    rid = e.create_run("parse", "target")
+
+    def old_decoder(self, response):
+        raise ValueError("Unknown or unsupplied evidence alias")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(EvidencePacket, "decode", old_decoder)
+        with pytest.raises(ValueError, match="alias"):
+            e.resume(rid, [1], review=False)
+    assert len(provider.requests) == 1
+    assert not store.find("results", {"run_id": rid})
+    e.resume(rid, [1], review=False)
+    assert len(provider.requests) == 1
+    assert store.find("results", {"run_id": rid})
+    assert any(
+        event.get("telemetry", {}).get("recovered")
+        for event in store.find("events", {"run_id": rid})
+    )
 
 
 def test_new_workflow_all_17_sections_no_llm_mapping_and_stable_export(tmp_path):
