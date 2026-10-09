@@ -34,7 +34,7 @@ flowchart TD
     M --> P["Code / Heuristic · بستهٔ شواهد مرتبط<br/>retrieval_packet() + build_packet()<br/>حذف تکرار، ارجاع دور، پاورقی، شناسهٔ کوتاه و تصاویر منتخب"]
     P --> E["AI · استخراج تخصصی یک بخش<br/>Engine.extract_section() · نقش تخصصی از SECTIONS<br/>gpt-6-astra · high"]
     NEED -->|"کافی؛ یا گسترش انجام شده"| V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار"]
-    E --> NEED{"Control · شاهد بیشتری لازم است؟<br/>search_requests / not_found / unreadable"}
+    E --> NEED{"Control · شاهد بیشتری لازم است؟<br/>search_requests / unreadable؛ not_found به‌تنهایی اسکیپ می‌شود"}
     NEED -->|"بله؛ حداکثر یک بار"| W["Code · گسترش بازیابی و متن canonical کل سند<br/>تصاویر بر اساس بازیابی و ارجاع‌ها"]
     W --> E
     V --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.review_section() · blind read<br/>بدون دیدن پاسخ استخراج اول<br/>gpt-6-astra · high"]
@@ -135,10 +135,12 @@ uv run datasheet export <run-id> .\outputs\result.json
 MAX3232CD همچنان candidate نیازمند بررسی انسانی است. فرمان `evaluate` بعد از استخراج
 همچنان برای سنجش ادعاها، پایه‌ها و مدار استفاده می‌شود.
 
-اگر extractor/blind reader اطلاعات را `not_found`/`unreadable` اعلام کند یا `search_requests`
+اگر extractor/blind reader اطلاعات را `unreadable` اعلام کند یا `search_requests`
 داشته باشد، یک بار بازیابی گسترده‌تر و متن canonical سند را دریافت می‌کند. درخواست
 شواهد پس از آن حل‌نشده باقی می‌ماند؛ نبود اطلاعات در تصاویر بررسی‌نشده می‌تواند نتیجه را
 `ambiguous` و خروجی را `needs_review` کند. این fallback ممکن است مصرف را بالا ببرد.
+فعلاً `not_found` به‌تنهایی باعث اجرای `expanded` نمی‌شود و فرایند ادامه پیدا می‌کند؛
+این نتیجه به معنای تأیید نبود اطلاعات در کل سند نیست. درخواست جست‌وجوی صریح همچنان گسترش را فعال می‌کند.
 `DATASHEET_PACKET_TEXT_BUDGET` بودجهٔ نرم کاراکتری است؛ تجاوز ثبت می‌شود و شواهد قطع نمی‌شوند.
 
 بازیابی این نسخه یک تغییر نیازمند benchmark است؛ «مرتبط بودن» رتبه‌بندی تضمین نمی‌کند

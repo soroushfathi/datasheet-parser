@@ -165,9 +165,10 @@ def test_citation_normalization_cannot_introduce_unsupplied_evidence(citation):
 
 
 class CompactProvider:
-    def __init__(self, absent=False):
+    def __init__(self, absent=False, search_requests=()):
         self.requests = []
         self.absent = absent
+        self.search_requests = list(search_requests)
 
     def generate(self, request):
         self.requests.append(request)
@@ -192,7 +193,7 @@ class CompactProvider:
                 }
                 for req in requirements(sid)
             ],
-            "search_requests": [],
+            "search_requests": self.search_requests,
         }
         if sid == 1:
             result["pins"] = []
@@ -256,8 +257,18 @@ def test_new_workflow_all_17_sections_no_llm_mapping_and_stable_export(tmp_path)
     assert len(provider.requests) == count
 
 
-def test_absence_requires_broad_search_and_unseen_visuals_remain_unresolved(tmp_path):
+@pytest.mark.parametrize("blind", [False, True])
+def test_not_found_alone_skips_expansion_for_extractor_and_blind_reader(tmp_path, blind):
     provider = CompactProvider(absent=True)
+    e, _store = engine(tmp_path, provider)
+    rid = e.create_run("parse", "target")
+    e.read_retrieved(e.store.get("runs", rid), 3, blind=blind)
+    assert [r.task for r in provider.requests] == ["blind:3" if blind else "extract:3"]
+    assert "Document-wide canonical text search: False" in provider.requests[0].prompt
+
+
+def test_explicit_search_request_still_triggers_expansion(tmp_path):
+    provider = CompactProvider(absent=True, search_requests=["Table 9 capacitor conditions"])
     e, _store = engine(tmp_path, provider)
     rid = e.create_run("parse", "target")
     e.resume(rid, [3], review=False)
@@ -265,8 +276,24 @@ def test_absence_requires_broad_search_and_unseen_visuals_remain_unresolved(tmp_
     assert "Document-wide canonical text search: True" in provider.requests[-1].prompt
 
 
+def test_unreadable_still_triggers_expansion_without_search_request(tmp_path):
+    class UnreadableProvider(CompactProvider):
+        def generate(self, request):
+            response = super().generate(request)
+            response["status"] = "unreadable"
+            for finding in response["findings"]:
+                finding["status"] = "unreadable"
+            return response
+
+    provider = UnreadableProvider()
+    e, _store = engine(tmp_path, provider)
+    rid = e.create_run("parse", "target")
+    e.read_retrieved(e.store.get("runs", rid), 3)
+    assert [r.task for r in provider.requests] == ["extract:3", "extract:3:expanded"]
+
+
 def test_expansion_does_not_receive_original_answer(tmp_path):
-    provider = CompactProvider(absent=True)
+    provider = CompactProvider(absent=True, search_requests=["Table 9 capacitor conditions"])
     e, _store = engine(tmp_path, provider)
     rid = e.create_run("parse", "target")
     e.resume(rid, [3])

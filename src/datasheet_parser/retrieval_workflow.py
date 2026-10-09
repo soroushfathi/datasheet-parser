@@ -187,9 +187,8 @@ class RetrievalWorkflow:
             section = expand_section(raw, sid, run["target"]["id"])
             all_allowed.update(packet.allowed)
             all_images.update(packet.image_pages)
-            needs_more = searches or any(
-                f.status in {Status.NOT_FOUND, Status.UNREADABLE} for f in section.findings
-            )
+            # A not_found disposition alone no longer triggers a second model request.
+            needs_more = searches or any(f.status == Status.UNREADABLE for f in section.findings)
             if not needs_more:
                 break
         # Canonical text expansion cannot prove absence of information in unseen graphical evidence.
@@ -207,7 +206,8 @@ class RetrievalWorkflow:
         for finding in section.findings:
             if finding.status == Status.NOT_FOUND and unseen:
                 finding.status = Status.AMBIGUOUS
-                finding.reason = f"Document text checked, but graphical pages {unseen} were not inspected."
+                scope = "Document text" if expanded else "Retrieved source"
+                finding.reason = f"{scope} checked, but graphical pages {unseen} were not inspected."
                 unresolved.append(finding.requirement_id)
         if unresolved and section.status == Status.NOT_FOUND:
             section.status = Status.AMBIGUOUS
