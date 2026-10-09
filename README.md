@@ -4,6 +4,105 @@ A terminal-first, evidence-backed extraction workflow for electronic component d
 Select a supported model/package, extract all 17 required sections, independently reread the
 source, validate the result, and export JSON with unresolved issues intact.
 
+## نمای کلی معماری و نوع پردازش هر مرحله
+
+این فلو مسیر پیش‌فرض استخراج و بازبینی هر **۱۷ بخش و ۵۱ نیازمندی** را نشان می‌دهد.
+نوع هر نود داخل برچسب آن نوشته شده است: **Human** یعنی اقدام کاربر، **AI** یعنی درخواست
+مدل زبانی، **Heuristic** یعنی قواعد انتخاب شواهد، **Code** یعنی تابع بدون فراخوانی مدل،
+و **Control** یعنی کنترل ترتیب اجرا. قواعد heuristic نیز با کد اجرا می‌شوند، اما انتخاب
+آن‌ها تضمین کامل بودن شواهد نیست.
+
+مدل نوشته‌شده روی نودهای AI، مدل **پیش‌فرض پیکربندی پروژه** است:
+`gpt-6-astra` با `reasoning=high` و provider برابر `codex`. این نام ادعای تشخیص مدل واقعی
+پشت سرویس نیست. مدل از تنظیمات یا `--model` قابل تغییر است؛ تنظیمات استخراج هنگام ساخت
+`run_id` ثبت و برای ادامهٔ همان اجرا ثابت می‌شوند. فعلاً مدل جداگانه‌ای برای هر نقش نداریم.
+
+```mermaid
+flowchart TD
+    U["Human · کاربر: معرفی فایل PDF"] --> I["Code · آماده‌سازی سند<br/>datasheet ingest → ingestion.ingest()<br/>pdfplumber + PDFium: متن، جدول، تصویر و مختصات"]
+    I --> DH["Heuristic · انتخاب تصاویر برای شناسایی مدل‌ها<br/>Engine.discover() + Engine.packet()<br/>صفحات آغازین، کلیدواژه‌های سفارش و صفحات کم‌متن؛ همراه متن کامل سند"]
+    DH --> D["AI · شناسایی مدل‌ها، پکیج‌ها و کدهای سفارش<br/>datasheet targets → Engine.discover()<br/>gpt-6-astra · high"]
+    D --> T["Human · انتخاب ترکیب مدل و پکیج<br/>datasheet extract → choose_target()"]
+    T --> R["Code · ساخت اجرای مستقل با run_id<br/>Engine.create_run()<br/>ثبت هدف، provider، مدل و reasoning"]
+    R --> M["AI · تهیه نقشه شواهد برای ۱۷ بخش و ۵۱ نیازمندی<br/>Engine.map_evidence() · دسته‌های ۶ صفحه‌ای<br/>gpt-6-astra · high"]
+
+    M --> P["Heuristic · آماده‌سازی شواهد یک بخش<br/>Engine.section_packet() + Engine.packet()<br/>نقشه شواهد + کلیدواژه‌ها + صفحات همسایه و کم‌متن<br/>متن کامل سند + تصاویر منتخب"]
+    P --> E["AI · استخراج تخصصی یک بخش<br/>Engine.extract_section() · نقش تخصصی از SECTIONS<br/>gpt-6-astra · high"]
+    E --> V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار"]
+    V --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.review_section() · blind read<br/>بدون دیدن پاسخ استخراج اول<br/>gpt-6-astra · high"]
+    B --> A["AI · مقایسه دو پاسخ با سند اصلی<br/>Engine.review_section() · audit<br/>ثبت خطاها و موارد جاافتاده<br/>gpt-6-astra · high"]
+    A --> Q{"Control · بخش دیگری باقی مانده؟<br/>Engine.resume() · LangGraph"}
+    Q -->|"بله"| P
+    Q -->|"خیر"| X["Code · کنترل نهایی و ارتباط بین بخش‌ها<br/>Engine.export()<br/>validate_section() + validate_cross_sections()"]
+
+    X --> J["Code · خروجی JSON شامل هر ۱۷ بخش<br/>datasheet export → write_export()<br/>شواهد، گزارش بازبینی و موارد حل‌نشده"]
+    J --> H["Human · مشاهده شواهد و گزارش بازبینی<br/>datasheet review / inspect"]
+    J --> EV["Code · ارزیابی با پاسخ مرجع انسانی، در صورت وجود<br/>datasheet evaluate → evaluation.evaluate()<br/>Precision / Recall / F1 و معیارهای پین و مدار"]
+
+    R -.-> MON["Code · مشاهده پیشرفت در طول اجرا<br/>datasheet status / trace / coverage"]
+    A -.-> MON
+    MON -.-> INS["Code · مشاهده نتیجه یک بخش یا تصویر شاهد<br/>datasheet section / inspect<br/>crop_region() برای برش شاهد"]
+
+    classDef human fill:#fff1d6,stroke:#b88720,color:#222;
+    classDef llm fill:#eee5ff,stroke:#8356bd,color:#222;
+    classDef heuristic fill:#e5f7e9,stroke:#428555,color:#222;
+    classDef code fill:#e5f1ff,stroke:#467bac,color:#222;
+    classDef control fill:#f0f0f0,stroke:#666,color:#222;
+    class U,T,H human;
+    class D,M,E,B,A llm;
+    class DH,P heuristic;
+    class I,R,V,X,J,EV,MON,INS code;
+    class Q control;
+```
+
+### ارتباط فلو با کد و نقش‌های AI
+
+نودهای بالا مراحل منطقی پردازش‌اند. گراف اجرایی داخل
+[`Engine.resume()`](src/datasheet_parser/engine.py) فقط سه نود `map`، `extract` و `review`
+دارد؛ انتخاب شواهد و اعتبارسنجی داخل توابع آن‌ها اجرا می‌شوند. بازخوانی مستقل و مقایسه
+دو درخواست جداگانهٔ AI داخل `review_section()` هستند. در مسیر مرحله‌به‌مرحلهٔ CLI، پس از
+پایان `extract`، کاربر دستور `export` را اجرا می‌کند؛ دستور یکپارچهٔ `run` این انتقال را
+خودکار انجام می‌دهد. خطوط نقطه‌چین، ابزارهای مشاهدهٔ وضعیت‌اند و ترتیب اجرای مراحل نیستند.
+
+| نقش AI | تابع | وظیفه و مدل پیش‌فرض |
+|---|---|---|
+| شناسایی هدف | `Engine.discover()` | یافتن ترکیب‌های واقعی مدل/پکیج/گرید با شاهد؛ `gpt-6-astra / high` |
+| نقشه‌بردار شواهد | `Engine.map_evidence()` | اتصال نیازمندی‌ها به شواهد کاندید؛ `gpt-6-astra / high` |
+| استخراج‌گر تخصصی | `Engine.extract_section()` | استخراج یک بخش با نقش تخصصی جدول زیر؛ `gpt-6-astra / high` |
+| بازخوان مستقل | `Engine.review_section()` → `blind:{sid}` | استخراج مجدد بدون پاسخ اول؛ `gpt-6-astra / high` |
+| بازبین مقایسه‌ای | `Engine.review_section()` → `review:{sid}` | سنجش هر دو پاسخ با منبع، کشف خطا و حذف‌شدگی؛ `gpt-6-astra / high` |
+
+تخصص استخراج‌گر از [`requirements.SECTIONS`](src/datasheet_parser/requirements.py) انتخاب
+می‌شود؛ این‌ها هفت نقش در پرامپت‌اند و کلاس‌ها یا سرویس‌های مستقل نیستند:
+
+| نقش تخصصی | شمارهٔ بخش‌ها |
+|---|---|
+| `pins` | 1, 10 |
+| `circuit` | 2 |
+| `specifications` | 3, 4, 9, 11, 12, 13 |
+| `application` | 5, 6, 8 |
+| `mechanical` | 7, 17 |
+| `identity` | 14 |
+| `notes` | 15, 16 |
+
+همهٔ درخواست‌های AI از `Engine.call()` به
+[`RecordedProvider.generate()` و provider انتخاب‌شده](src/datasheet_parser/providers.py)
+می‌رسند. در حالت پیش‌فرض، `CodexProvider` هر درخواست را در یک اجرای تازهٔ Codex CLI با
+پرامپت، تصاویر و JSON Schema اجرا می‌کند. بازخوان مستقل پاسخ اول را نمی‌بیند، اما مدل و
+منبع آن مشترک است؛ توافق دو پاسخ به‌تنهایی تأیید صحت محسوب نمی‌شود.
+
+[`MongoStore`](src/datasheet_parser/store.py) متادیتا، وضعیت و نتایج مراحل را در MongoDB
+نگه می‌دارد و GridFS فایل‌های PDF، تصاویر و لاگ‌ها را ذخیره می‌کند. `Engine.call()` پاسخ
+معتبر را پیش از ثبت در دیتابیس به‌صورت اتمیک در `work/checkpoints/` ذخیره می‌کند تا قطع
+اتصال باعث تکرار همان درخواست موفق نشود. ادامهٔ اجرا مراحل تکمیل‌شده را دوباره استفاده
+می‌کند؛ بنابراین هر عبور از فلو لزوماً یک فراخوانی جدید مدل نیست.
+
+اعتبارسنجی‌های این فلو قطعی و مبتنی بر قواعد کد هستند؛ صحت معنایی تمام اطلاعات را تضمین
+نمی‌کنند. بازبین فعلی مسائل را ثبت می‌کند و پاسخ اولیه را خودکار اصلاح نمی‌کند. خروجی
+نهایی می‌تواند `needs_review` باشد. جزئیات قواعد در
+[`validation.py`](src/datasheet_parser/validation.py) و معیارهای مقایسه با مرجع انسانی در
+[`evaluation.py`](src/datasheet_parser/evaluation.py) قرار دارند.
+
 ## Quick start (Windows)
 
 Requires Python 3.11+ (development uses 3.13), uv, and MongoDB. The default inference transport
