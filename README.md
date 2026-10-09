@@ -12,6 +12,10 @@ source, validate the result, and export JSON with unresolved issues intact.
 و **Control** یعنی کنترل ترتیب اجرا. قواعد heuristic نیز با کد اجرا می‌شوند، اما انتخاب
 آن‌ها تضمین کامل بودن شواهد نیست.
 
+این فلو برای اجرای جدید `retrieval-v2` است. اجراهای قدیمی و `--pipeline legacy` همان
+mapping شش‌صفحه‌ای و پرامپت‌های قبلی را ادامه می‌دهند. تنظیمات بازیابی و تعداد workerها
+داخل run ثبت می‌شوند؛ schema نهایی همچنان نسخهٔ `1.0` و شامل هر ۱۷ بخش است.
+
 مدل نوشته‌شده روی نودهای AI، مدل **پیش‌فرض پیکربندی پروژه** است:
 `gpt-6-astra` با `reasoning=high` و provider برابر `codex`. این نام ادعای تشخیص مدل واقعی
 پشت سرویس نیست. مدل از تنظیمات یا `--model` قابل تغییر است؛ تنظیمات استخراج هنگام ساخت
@@ -20,15 +24,19 @@ source, validate the result, and export JSON with unresolved issues intact.
 ```mermaid
 flowchart TD
     U["Human · کاربر: معرفی فایل PDF"] --> I["Code · آماده‌سازی سند<br/>datasheet ingest → ingestion.ingest()<br/>pdfplumber + PDFium: متن، جدول، تصویر و مختصات"]
-    I --> DH["Heuristic · انتخاب تصاویر برای شناسایی مدل‌ها<br/>Engine.discover() + Engine.packet()<br/>صفحات آغازین، کلیدواژه‌های سفارش و صفحات کم‌متن؛ همراه متن کامل سند"]
+    I --> IX["Code · ایندکس ساختاری تمام صفحات، یک بار<br/>document_index.ensure_index()<br/>قطعات متن، جدول کامل، عنوان، پاورقی و روابط"]
+    IX --> DH["Heuristic · شواهد شناسایی مدل‌ها<br/>discovery_packet()<br/>اطلاعات سفارش، صفحات مرتبط و کم‌متن"]
     DH --> D["AI · شناسایی مدل‌ها، پکیج‌ها و کدهای سفارش<br/>datasheet targets → Engine.discover()<br/>gpt-6-astra · high"]
     D --> T["Human · انتخاب ترکیب مدل و پکیج<br/>datasheet extract → choose_target()"]
     T --> R["Code · ساخت اجرای مستقل با run_id<br/>Engine.create_run()<br/>ثبت هدف، provider، مدل و reasoning"]
-    R --> M["AI · تهیه نقشه شواهد برای ۱۷ بخش و ۵۱ نیازمندی<br/>Engine.map_evidence() · دسته‌های ۶ صفحه‌ای<br/>gpt-6-astra · high"]
+    R --> M["Code / Heuristic · نقشهٔ شواهد برای ۵۱ نیازمندی<br/>map_retrieval() + Retriever.select()<br/>Contextual BM25؛ embedding و reranker محلی اختیاری"]
 
-    M --> P["Heuristic · آماده‌سازی شواهد یک بخش<br/>Engine.section_packet() + Engine.packet()<br/>نقشه شواهد + کلیدواژه‌ها + صفحات همسایه و کم‌متن<br/>متن کامل سند + تصاویر منتخب"]
+    M --> P["Code / Heuristic · بستهٔ شواهد مرتبط<br/>retrieval_packet() + build_packet()<br/>حذف تکرار، ارجاع دور، پاورقی، شناسهٔ کوتاه و تصاویر منتخب"]
     P --> E["AI · استخراج تخصصی یک بخش<br/>Engine.extract_section() · نقش تخصصی از SECTIONS<br/>gpt-6-astra · high"]
-    E --> V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار"]
+    NEED -->|"کافی؛ یا گسترش انجام شده"| V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار"]
+    E --> NEED{"Control · شاهد بیشتری لازم است؟<br/>search_requests / not_found / unreadable"}
+    NEED -->|"بله؛ حداکثر یک بار"| W["Code · گسترش بازیابی و متن canonical کل سند<br/>تصاویر بر اساس بازیابی و ارجاع‌ها"]
+    W --> E
     V --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.review_section() · blind read<br/>بدون دیدن پاسخ استخراج اول<br/>gpt-6-astra · high"]
     B --> A["AI · مقایسه دو پاسخ با سند اصلی<br/>Engine.review_section() · audit<br/>ثبت خطاها و موارد جاافتاده<br/>gpt-6-astra · high"]
     A --> Q{"Control · بخش دیگری باقی مانده؟<br/>Engine.resume() · LangGraph"}
@@ -49,10 +57,10 @@ flowchart TD
     classDef code fill:#e5f1ff,stroke:#467bac,color:#222;
     classDef control fill:#f0f0f0,stroke:#666,color:#222;
     class U,T,H human;
-    class D,M,E,B,A llm;
+    class D,E,B,A llm;
     class DH,P heuristic;
-    class I,R,V,X,J,EV,MON,INS code;
-    class Q control;
+    class I,IX,R,M,W,V,X,J,EV,MON,INS code;
+    class Q,NEED control;
 ```
 
 ### ارتباط فلو با کد و نقش‌های AI
@@ -67,7 +75,7 @@ flowchart TD
 | نقش AI | تابع | وظیفه و مدل پیش‌فرض |
 |---|---|---|
 | شناسایی هدف | `Engine.discover()` | یافتن ترکیب‌های واقعی مدل/پکیج/گرید با شاهد؛ `gpt-6-astra / high` |
-| نقشه‌بردار شواهد | `Engine.map_evidence()` | اتصال نیازمندی‌ها به شواهد کاندید؛ `gpt-6-astra / high` |
+| نقشهٔ شواهد، کد | `Engine.map_retrieval()` | رتبه‌بندی و اتصال شواهد برای تمام نیازمندی‌ها؛ بدون درخواست LLM |
 | استخراج‌گر تخصصی | `Engine.extract_section()` | استخراج یک بخش با نقش تخصصی جدول زیر؛ `gpt-6-astra / high` |
 | بازخوان مستقل | `Engine.review_section()` → `blind:{sid}` | استخراج مجدد بدون پاسخ اول؛ `gpt-6-astra / high` |
 | بازبین مقایسه‌ای | `Engine.review_section()` → `review:{sid}` | سنجش هر دو پاسخ با منبع، کشف خطا و حذف‌شدگی؛ `gpt-6-astra / high` |
@@ -90,6 +98,81 @@ flowchart TD
 می‌رسند. در حالت پیش‌فرض، `CodexProvider` هر درخواست را در یک اجرای تازهٔ Codex CLI با
 پرامپت، تصاویر و JSON Schema اجرا می‌کند. بازخوان مستقل پاسخ اول را نمی‌بیند، اما مدل و
 منبع آن مشترک است؛ توافق دو پاسخ به‌تنهایی تأیید صحت محسوب نمی‌شود.
+
+در نسخهٔ جدید، بازخوان مستقل مسیر جست‌وجوی واژگانی مکمل دارد و پاسخ اول را دریافت نمی‌کند.
+قرارداد بخش‌ها فقط داده‌های همان نقش را درخواست می‌کند؛ `section_id`، شناسهٔ ادعا و
+`applies_to` با کد اضافه می‌شوند. شناسه‌های موقت `eN` فقط داخل درخواست معتبرند و به
+شناسه‌های کامل شواهد باز می‌گردند. مدل برای موارد موفق توضیح طولانی تولید نمی‌کند؛
+توضیح ابهام، تعارض و خطا حفظ می‌شود.
+
+### Retrieval, packet inspection and comparison
+
+پیش‌فرض بازیابی **Contextual BM25** روی متن قطعات همراه عنوان بخش است. این زمینه از
+ساختار سند ساخته می‌شود و خودش مدرک نیست. embedding و reranker محلی اختیاری‌اند؛ هیچ
+مدل معنایی یا دانلود مدل به‌طور پیش‌فرض فعال نمی‌شود. روابط عنوان/جدول، پاورقی، ادامه و
+ارجاع‌های دور در Mongo ذخیره می‌شوند. گسترش روابط دو hop دارد تا یک ارجاع عمومی دوباره
+کل سند را وارد درخواست نکند. جدول‌ها کامل حفظ می‌شوند؛ عکس هر صفحه یک بار ارسال می‌شود.
+برش خودکار شکل‌ها فعلاً انجام نمی‌شود تا شمارهٔ پایه و اتصال مدار از تصویر حذف نشود.
+
+ابتدا catalog را آماده کن، سپس یک run بدون شروع استخراج بساز و بسته‌ها را بررسی کن:
+
+```powershell
+uv run datasheet index <parse-id>
+uv run datasheet targets <parse-id>
+uv run datasheet extract <parse-id> --model gpt-6.1-sol --reasoning medium --prepare-only
+# انتخاب تعاملی هدف و دریافت run-id
+uv run datasheet packet <run-id> 2 --output .\work\packets\netlist
+uv run datasheet packet <run-id> 2 --blind --output .\work\packets\netlist-blind
+uv run datasheet retrieval-evaluate <run-id> .\references\gold\MAX3232CD\reference.json --output .\work\retrieval-report.json
+uv run datasheet resume <run-id>
+uv run datasheet export <run-id> .\outputs\result.json
+```
+
+`packet` فایل‌های `evidence.txt` و `manifest.json` شامل aliasها، صفحات عکس، مسیر تصاویر،
+قطعات و علت انتخاب تولید می‌کند؛ مدل فراخوانی نمی‌شود. `retrieval-evaluate` فقط موجودبودن
+شواهد موردارجاع مرجع را می‌سنجد، از جمله پوشش با تصویر صفحه، جدول یا متن کامل صفحهٔ متنی.
+این معیار صحت پاسخ، دیده‌شدن واقعی شاهد، یا کامل‌بودن مرجع را تضمین نمی‌کند. مرجع فعلی
+MAX3232CD همچنان candidate نیازمند بررسی انسانی است. فرمان `evaluate` بعد از استخراج
+همچنان برای سنجش ادعاها، پایه‌ها و مدار استفاده می‌شود.
+
+اگر extractor/blind reader اطلاعات را `not_found`/`unreadable` اعلام کند یا `search_requests`
+داشته باشد، یک بار بازیابی گسترده‌تر و متن canonical سند را دریافت می‌کند. درخواست
+شواهد پس از آن حل‌نشده باقی می‌ماند؛ نبود اطلاعات در تصاویر بررسی‌نشده می‌تواند نتیجه را
+`ambiguous` و خروجی را `needs_review` کند. این fallback ممکن است مصرف را بالا ببرد.
+`DATASHEET_PACKET_TEXT_BUDGET` بودجهٔ نرم کاراکتری است؛ تجاوز ثبت می‌شود و شواهد قطع نمی‌شوند.
+
+بازیابی این نسخه یک تغییر نیازمند benchmark است؛ «مرتبط بودن» رتبه‌بندی تضمین نمی‌کند
+همهٔ واقعیت‌ها پیدا شده‌اند. برای مقایسهٔ کنترل‌شده، همان هدف را در run جداگانه با
+`--pipeline legacy` اجرا کن. بعد از تأیید مرجع انسانی، ادعاها و شرایط و مدار هر دو خروجی
+را با `evaluate` مقایسه کن. نتایج بازیابی اولیه و fallback را جدا بررسی کن؛ مرجع برای
+ساخت index یا انتخاب قطعات استفاده نمی‌شود.
+
+برای dense retrieval / reranking بدون کلید API:
+
+```powershell
+uv sync --extra dev --extra retrieval
+$env:DATASHEET_EMBEDDING_MODEL = 'D:\Models\your-sentence-transformer'
+$env:DATASHEET_RERANKER_MODEL = 'D:\Models\your-cross-encoder'
+```
+
+مدل‌ها باید با SentenceTransformer و CrossEncoder سازگار باشند. حالت local-only پیش‌فرض
+است؛ اگر مدل موجود نباشد خطای روشن داده می‌شود. با `DATASHEET_RETRIEVAL_LOCAL_ONLY=false`
+دانلود اولیه مجاز می‌شود. بردارها با نسخهٔ index و مدل cache می‌شوند؛ در صورت تغییر
+وزن‌های یک مسیر محلی از مسیر نسخه‌دار جدید استفاده کن. قابلیت vector search دیتابیس
+لازم نیست؛ برای تعداد قطعات یک سند، شباهت روی بردارهای محلی محاسبه می‌شود.
+
+برای آزمایش دو بخش هم‌زمان، در ساخت run جدید `--workers 2` بده. هر بخش provider و لاگ
+مستقل دارد، و extract → blind → review همان بخش ترتیبی است. پیش‌فرض یک worker است؛
+هم‌زمانی مصرف توکن را کاهش نمی‌دهد و ممکن است محدودیت سرویس را زودتر فعال کند.
+`trace` زمان مراحل کد، اندازهٔ درخواست، تعداد/ابعاد عکس‌ها، usage و retry را نشان می‌دهد.
+بودجهٔ خروجی در Codex راهنمای پرامپت است؛ در OpenAI API سقف کل خروجی API است، و پاسخ
+ناقص پذیرفته نمی‌شود. درصد بهبود زمان و دقت فقط پس از benchmark واقعی گزارش می‌شود.
+
+اندازهٔ بستهٔ netlist در [بررسی MAX3232](benchmarks/max3232-packet-comparison.json)
+از ۱۳۷٬۵۲۶ به ۲۴٬۲۱۶ کاراکتر و از ۲۵ به ۱۱ تصویر کاهش یافته است. پوشش ارجاع‌های مرجع
+candidate در بسته‌های اولیهٔ تمام بخش‌ها ۸۰٪ بود؛ ۱۵ نیازمندی ارجاع جاافتاده دارند.
+این عدد دقت پاسخ نیست و نشان می‌دهد ارزیابی fallback و خروجی واقعی پیش از ادعای حفظ
+کیفیت ضروری است. صرفه‌جویی واقعی توکن و زمان هنوز اندازه‌گیری نهایی نشده است.
 
 [`MongoStore`](src/datasheet_parser/store.py) متادیتا، وضعیت و نتایج مراحل را در MongoDB
 نگه می‌دارد و GridFS فایل‌های PDF، تصاویر و لاگ‌ها را ذخیره می‌کند. `Engine.call()` پاسخ

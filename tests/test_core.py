@@ -255,7 +255,7 @@ def setup_engine(tmp_path, provider):
         "regions", {"id": "parse:p1", "parse_id": "parse", "page": 1, "kind": "page", "text": "Test document"}
     )
     store.put("catalogs", {"id": "parse", "targets": [TARGET], "ambiguities": []})
-    settings = Settings(mongo_uri="unused", work_dir=tmp_path)
+    settings = Settings(mongo_uri="unused", work_dir=tmp_path, pipeline="legacy")
     return Engine(store, provider, settings), store
 
 

@@ -46,6 +46,9 @@ class MongoStore:
             "edges": [("run_id", 1), ("source", 1), ("relation", 1)],
             "events": [("run_id", 1), ("time", 1)],
             "results": [("run_id", 1), ("section_id", 1)],
+            "chunks": [("index_id", 1), ("ordinal", 1)],
+            "document_indexes": [("parse_id", 1)],
+            "evidence_packets": [("run_id", 1), ("section_id", 1)],
         }.items():
             self.db[coll].create_index(keys)
 

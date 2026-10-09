@@ -66,12 +66,24 @@ def guarded(fn):
     return inner
 
 
-def context(provider=None, model=None):
+def context(provider=None, model=None, reasoning=None, pipeline=None, workers=None):
     settings = Settings.load()
     if provider:
         settings.provider = provider
     if model:
         settings.model = model
+    if reasoning:
+        if reasoning not in {"low", "medium", "high", "xhigh", "max", "ultra"}:
+            raise ValueError("Unsupported reasoning level")
+        settings.reasoning = reasoning
+    if pipeline:
+        if pipeline not in {"legacy", "retrieval-v2"}:
+            raise ValueError("Pipeline must be legacy or retrieval-v2")
+        settings.pipeline = pipeline
+    if workers is not None:
+        if workers not in {1, 2}:
+            raise ValueError("Workers must be 1 or 2")
+        settings.workers = workers
     store = MongoStore(settings.mongo_uri, settings.database)
     store.ping()
     store.ensure_indexes()
@@ -198,11 +210,14 @@ def run_document(
     target: str | None = None,
     provider: str | None = None,
     model: str | None = None,
+    reasoning: str | None = None,
+    pipeline: str | None = None,
+    workers: int | None = None,
 ):
     """PDF to JSON: prepare, discover, select a target, extract and review all 17 sections, then export."""
     if output.resolve() == pdf.resolve() or output.is_dir():
         raise ValueError("Output must be a JSON file path distinct from the source PDF")
-    _, store, engine = context(provider, model)
+    _, store, engine = context(provider, model, reasoning, pipeline, workers)
     parse_id = ingest_pdf(pdf.resolve(), store, console.print)
     typer.echo(f"parse_id={parse_id}")
     try:
@@ -226,14 +241,24 @@ def extract(
     review: bool = True,
     provider: str | None = None,
     model: str | None = None,
+    reasoning: str | None = None,
+    pipeline: str | None = None,
+    workers: int | None = None,
+    prepare_only: bool = False,
 ):
     """Select a target and start a resumable extraction. Default: every section with review."""
-    _, store, engine = context(provider, model)
+    _, store, engine = context(provider, model, reasoning, pipeline, workers)
     catalog = store.get("catalogs", parse_id)
     target = choose_target(catalog, target)
     ids = selected_sections(sections)
     run_id = engine.create_run(parse_id, target)
     typer.echo(f"run_id={run_id}")
+    if prepare_only:
+        if engine.settings.pipeline != "retrieval-v2":
+            raise ValueError("--prepare-only requires retrieval-v2")
+        engine.map_evidence(store.get("runs", run_id))
+        console.print(f"Prepared without extraction. Inspect packet, then datasheet resume {run_id}")
+        return
     engine.resume(run_id, ids, review)
 
 
@@ -323,6 +348,69 @@ def trace(run_id: str):
     _, store, _ = context()
     store.get("runs", run_id)
     typer.echo(json.dumps(summarize_events(store.find("events", {"run_id": run_id})), indent=2))
+
+
+@app.command("index")
+@guarded
+def index_document(parse_id: str):
+    """Build/reuse a structural index of every page. No model calls."""
+    from .document_index import ensure_index
+
+    _, store, engine = context()
+    engine.pages(parse_id)
+    manifest, _ = ensure_index(store, parse_id)
+    typer.echo(json.dumps(manifest, indent=2))
+
+
+@app.command("packet")
+@guarded
+def inspect_packet(
+    run_id: str,
+    section_id: int,
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    blind: bool = False,
+    expanded: bool = False,
+):
+    """Save exactly the selected source packet and citation map without invoking a model."""
+    _, store, engine = context()
+    run = store.get("runs", run_id)
+    if run.get("pipeline") != "retrieval-v2" or section_id not in SECTIONS:
+        raise ValueError("packet needs a retrieval-v2 run and a section from 1 to 17")
+    packet = engine.retrieval_packet(run, section_id, complement=blind, expanded=expanded)
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "evidence.txt").write_text(packet.text, encoding="utf-8")
+    data = {
+        "run_id": run_id,
+        "section_id": section_id,
+        "aliases": packet.aliases,
+        "chunk_ids": packet.chunk_ids,
+        "images": [str(p) for p in packet.images],
+        "metrics": packet.metrics,
+    }
+    (output / "manifest.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    typer.echo(json.dumps({"path": str(output.resolve()), "metrics": packet.metrics}, indent=2))
+
+
+@app.command("retrieval-evaluate")
+@guarded
+def evaluate_retrieval(run_id: str, reference: Path, output: Path | None = None):
+    """Score initial packets against reference citations, without inference or answer scoring."""
+    from .evaluation import evaluate
+    from .retrieval_evaluation import citation_coverage
+
+    _, store, engine = context()
+    run = store.get("runs", run_id)
+    if run.get("pipeline") != "retrieval-v2":
+        raise ValueError("retrieval-evaluate requires a retrieval-v2 run")
+    gold = ExtractionResult.model_validate_json(reference.read_text(encoding="utf-8")).model_dump(mode="json")
+    document_id = store.get("parses", run["parse_id"])["document_id"]
+    evaluate({"document_id": document_id, "target": run["target"], "sections": []}, gold)
+    packets = {sid: engine.retrieval_packet(run, sid) for sid in SECTIONS}
+    report = json.dumps(citation_coverage(gold, packets), indent=2)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(report, encoding="utf-8")
+    typer.echo(report)
 
 
 @app.command()

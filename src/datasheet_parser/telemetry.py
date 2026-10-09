@@ -3,7 +3,7 @@ from collections import Counter
 
 def summarize_events(events: list[dict]) -> dict:
     counts = Counter(e["status"] for e in events)
-    completed = [e for e in events if e["status"] == "completed"]
+    completed = [e for e in events if e["status"] == "completed" and e.get("kind", "llm") == "llm"]
     totals = Counter()
     elapsed = 0.0
     measured = 0
@@ -25,5 +25,22 @@ def summarize_events(events: list[dict]) -> dict:
         "completed_calls_with_usage": measured,
         "completed_calls": len(completed),
         "billed_cost": None,
+        "code_stage_seconds": sum(
+            e.get("telemetry", {}).get("elapsed_seconds", 0)
+            for e in events
+            if e["status"] == "completed" and e.get("kind") == "code"
+        ),
+        "requests": [
+            {
+                "stage": e["stage"],
+                "status": e["status"],
+                "elapsed_seconds": e.get("telemetry", {}).get("elapsed_seconds"),
+                "input": e.get("request_metrics") or e.get("telemetry", {}).get("request_metrics"),
+                "usage": e.get("telemetry", {}).get("usage"),
+                "attempts": e.get("telemetry", {}).get("attempts"),
+            }
+            for e in events
+            if e["status"] in {"completed", "failed"}
+        ],
         "note": "Missing usage is unknown, not zero; subscription calls have no fabricated API dollar cost.",
     }

@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -17,6 +18,13 @@ class Settings(BaseModel):
     llm_attempts: int = Field(default=3, ge=1, le=5)
     codex_proxy: str | None = Field(default=None, repr=False)
     codex_executable: str | None = None
+    pipeline: Literal["legacy", "retrieval-v2"] = "retrieval-v2"
+    retrieval_top_k: int = Field(default=6, ge=1, le=50)
+    packet_text_budget: int = Field(default=60000, ge=2000)
+    embedding_model: str | None = None
+    reranker_model: str | None = None
+    retrieval_local_only: bool = True
+    workers: int = Field(default=1, ge=1, le=2)
 
     @classmethod
     def load(cls):
@@ -32,6 +40,13 @@ class Settings(BaseModel):
             llm_attempts=int(os.getenv("DATASHEET_LLM_ATTEMPTS", "3")),
             codex_proxy=os.getenv("DATASHEET_CODEX_PROXY") or None,
             codex_executable=os.getenv("DATASHEET_CODEX_EXECUTABLE") or None,
+            pipeline=os.getenv("DATASHEET_PIPELINE", "retrieval-v2"),
+            retrieval_top_k=int(os.getenv("DATASHEET_RETRIEVAL_TOP_K", "6")),
+            packet_text_budget=int(os.getenv("DATASHEET_PACKET_TEXT_BUDGET", "60000")),
+            embedding_model=os.getenv("DATASHEET_EMBEDDING_MODEL") or None,
+            reranker_model=os.getenv("DATASHEET_RERANKER_MODEL") or None,
+            retrieval_local_only=os.getenv("DATASHEET_RETRIEVAL_LOCAL_ONLY", "true").lower() != "false",
+            workers=int(os.getenv("DATASHEET_WORKERS", "1")),
         )
 
 

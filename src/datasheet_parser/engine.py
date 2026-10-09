@@ -2,17 +2,20 @@
 
 import json
 import uuid
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from threading import local
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
 from .config import Settings
 from .models import Catalog, EvidenceMap, ExtractionResult, Review, SectionResult, Target
-from .providers import LLMRequest, PendingResponse, strict_schema
+from .providers import LLMRequest, PendingResponse, make_provider, strict_schema
 from .requirements import KEYWORDS, SECTIONS, requirements
+from .retrieval_workflow import RetrievalWorkflow
 from .store import Store, materialize
 from .validation import validate_cross_sections, validate_section
 
@@ -38,7 +41,7 @@ class WorkflowState(TypedDict):
     review: bool
 
 
-class Engine:
+class Engine(RetrievalWorkflow):
     def __init__(self, store: Store, provider, settings: Settings, progress=lambda text: None):
         self.store, self.provider, self.settings, self.progress = store, provider, settings, progress
 
@@ -56,10 +59,21 @@ class Engine:
         )
         self.progress(f"{stage}: {status}")
 
-    def call(self, run_id, stage, model, prompt, images):
-        self.event(run_id, stage, "started")
+    def call(self, run_id, stage, model, prompt, images, request_metrics=None, output_budget=None):
+        self.event(run_id, stage, "started", kind="llm", request_metrics=request_metrics)
         try:
-            request = LLMRequest(stage, POLICY + prompt, strict_schema(model), images)
+            if output_budget:
+                prompt += (
+                    f"\nOutput token target: {output_budget}. Be concise; preserve facts and conditions."
+                )
+            request = LLMRequest(
+                stage,
+                POLICY + prompt,
+                strict_schema(model),
+                images,
+                output_budget=output_budget,
+                metrics=request_metrics,
+            )
             fingerprint = request.fingerprint(self.settings.model, self.settings.reasoning)
             checkpoint_id = sha256(f"{run_id}:{stage}:{fingerprint}".encode()).hexdigest()
             checkpoint = self.settings.work_dir / "checkpoints" / f"{checkpoint_id}.json"
@@ -107,6 +121,8 @@ class Engine:
                 "completed",
                 artifacts=artifacts,
                 telemetry={k: v for k, v in record.items() if k != "folder"},
+                kind="llm",
+                request_metrics=request_metrics,
             )
             return parsed
         except PendingResponse:
@@ -186,7 +202,16 @@ class Engine:
                 ]
             )
         }
-        packet, images, allowed = self.packet(parse_id, selected, full_text=True)
+        contextual_packet = None
+        if self.settings.pipeline == "retrieval-v2":
+            contextual_packet = self.discovery_packet(parse_id)
+            packet, images, allowed = (
+                contextual_packet.text,
+                contextual_packet.images,
+                contextual_packet.allowed,
+            )
+        else:
+            packet, images, allowed = self.packet(parse_id, selected, full_text=True)
         prompt = (
             "\nDiscover the valid target model/package/temperature-grade combinations in this PDF. "
             "Do not form a Cartesian product. Exclude alternative products and external components mentioned in passing. "
@@ -196,6 +221,8 @@ class Engine:
             + packet
         )
         catalog = self.call(f"catalog:{parse_id}", "discover", Catalog, prompt, images)
+        if contextual_packet:
+            catalog = Catalog.model_validate(contextual_packet.decode(catalog.model_dump(mode="json")))
         ids = [t.id for t in catalog.targets]
         if len(ids) != len(set(ids)):
             raise ValueError("Discovery returned duplicate target IDs")
@@ -230,13 +257,24 @@ class Engine:
                 "status": "created",
                 "created_at": now(),
                 "schema_version": "1.0",
-                "prompt_version": "1",
+                "prompt_version": "2" if self.settings.pipeline == "retrieval-v2" else "1",
+                "pipeline": self.settings.pipeline,
+                "workers": self.settings.workers if self.settings.pipeline == "retrieval-v2" else 1,
+                "retrieval_config": {
+                    "top_k": self.settings.retrieval_top_k,
+                    "text_budget": self.settings.packet_text_budget,
+                    "embedding_model": self.settings.embedding_model,
+                    "reranker_model": self.settings.reranker_model,
+                    "local_only": self.settings.retrieval_local_only,
+                },
                 "review_policy": "independent_then_compare",
             },
         )
         return run_id
 
     def map_evidence(self, run):
+        if run.get("pipeline") == "retrieval-v2":
+            return self.map_retrieval(run)
         pages = self.pages(run["parse_id"])
         all_requirements = requirements()
         for offset in range(0, len(pages), 6):
@@ -333,6 +371,8 @@ class Engine:
         return packet, images, allowed, sorted(selected)
 
     def extract_section(self, run, sid):
+        if run.get("pipeline") == "retrieval-v2":
+            return self.extract_retrieved(run, sid)
         record_id = f"{run['id']}:{sid}"
         try:
             return self.store.get("results", record_id)
@@ -393,6 +433,8 @@ class Engine:
         return record
 
     def review_section(self, run, sid, record):
+        if run.get("pipeline") == "retrieval-v2":
+            return self.review_retrieved(run, sid, record)
         review_id = f"{run['id']}:{sid}"
         try:
             return self.store.get("reviews", review_id)
@@ -465,8 +507,17 @@ class Engine:
         run["status"] = "running"
         self.store.put("runs", run)
         try:
+            if run.get("pipeline") == "retrieval-v2" and run.get("workers", 1) > 1:
+                self.map_retrieval(run)
+                self.parallel_sections(run, list(section_ids or range(1, 18)), review)
+                count = len(self.store.find("results", {"run_id": run_id}))
+                run["status"] = "extracted" if count == 17 else "partial"
+                return run
 
             def map_node(state):
+                if run.get("pipeline") == "retrieval-v2":
+                    self.map_retrieval(run)
+                    return {}
                 batches = self.store.find("mapping_batches", {"run_id": run_id})
                 expected = (len(self.pages(run["parse_id"])) + 5) // 6
                 if len(batches) != expected or not self.store.find("coverage", {"run_id": run_id}):
@@ -511,6 +562,33 @@ class Engine:
             self.store.put("runs", run)
         return run
 
+    def parallel_sections(self, run, section_ids, review):
+        """Separate providers/checkpoints per worker. Fail fast; allow in-flight sections to finish."""
+        state = local()
+
+        def execute(sid):
+            if not hasattr(state, "engine"):
+                settings = self.settings.model_copy(deep=True)
+                state.engine = Engine(self.store, make_provider(settings), settings, self.progress)
+            worker = state.engine
+            record = worker.extract_section(run, sid)
+            if review:
+                worker.review_section(run, sid, record)
+
+        todo = iter(section_ids)
+        with ThreadPoolExecutor(max_workers=run["workers"]) as pool:
+            pending = {pool.submit(execute, sid) for sid in section_ids[: run["workers"]]}
+            for _ in range(run["workers"]):
+                next(todo, None)
+            while pending:
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for task in done:
+                    task.result()
+                for _ in done:
+                    sid = next(todo, None)
+                    if sid is not None:
+                        pending.add(pool.submit(execute, sid))
+
     def export(self, run_id):
         run = self.store.get("runs", run_id)
         records = sorted(self.store.find("results", {"run_id": run_id}), key=lambda r: r["section_id"])
@@ -525,6 +603,13 @@ class Engine:
             for i in validate_section(section, run["target"]["id"], known, set(record["supplied_region_ids"]))
         ]
         issues.extend(validate_cross_sections(sections))
+        if run.get("pipeline") == "retrieval-v2":
+            issues.extend(
+                i
+                for record in records
+                for i in record.get("validation", [])
+                if i["code"] in {"incomplete_visual_search", "unresolved_evidence_request"}
+            )
         reviews = {r["section_id"]: r for r in self.store.find("reviews", {"run_id": run_id})}
         for section in sections:
             review = reviews.get(section.section_id)
@@ -566,6 +651,8 @@ class Engine:
                 "exported_at": now(),
                 "reviewed_is_not_certified_correct": True,
                 "human_notes": self.store.find("human_notes", {"run_id": run_id}),
+                "pipeline": run.get("pipeline", "legacy"),
+                "retrieval_config": run.get("retrieval_config"),
             },
         )
         self.store.put("runs", {**run, "status": result.status})

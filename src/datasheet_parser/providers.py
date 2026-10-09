@@ -81,6 +81,8 @@ class LLMRequest:
     prompt: str
     schema: dict
     images: list[Path]
+    output_budget: int | None = None
+    metrics: dict | None = None
 
     def fingerprint(self, model: str, reasoning: str) -> str:
         data = {
@@ -91,6 +93,8 @@ class LLMRequest:
             "model": model,
             "reasoning": reasoning,
         }
+        if self.output_budget is not None:
+            data["output_budget"] = self.output_budget
         return sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 
@@ -133,6 +137,28 @@ class RecordedProvider:
             encoding="utf-8",
         )
         start = time.monotonic()
+        request_metrics = {
+            "prompt_chars": len(request.prompt),
+            "schema_chars": len(json.dumps(request.schema)),
+            "image_count": len(images),
+            "image_bytes": sum(p.stat().st_size for p in images),
+            "output_budget": request.output_budget,
+            **(request.metrics or {}),
+        }
+        from PIL import Image
+
+        dimensions = []
+        for path in images:
+            try:
+                with Image.open(path) as bitmap:
+                    dimensions.append({"width": bitmap.width, "height": bitmap.height})
+            except OSError:
+                dimensions.append({"width": None, "height": None})
+        request_metrics["image_dimensions"] = dimensions
+        request_metrics["output_budget_enforcement"] = (
+            "api_total_limit" if self.name == "openai" else "prompt_hint"
+        )
+        (folder / "input_metrics.json").write_text(json.dumps(request_metrics), encoding="utf-8")
         try:
             response, telemetry = self.execute(request, folder, images)
             Draft202012Validator(request.schema).validate(response)
@@ -145,6 +171,8 @@ class RecordedProvider:
                 "elapsed_seconds": time.monotonic() - start,
                 "time": datetime.now(UTC).isoformat(),
                 "status": "success",
+                "request_metrics": request_metrics,
+                "response_bytes": len(json.dumps(response).encode()),
                 **telemetry,
             }
             (folder / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -162,6 +190,10 @@ class RecordedProvider:
                 "elapsed_seconds": time.monotonic() - start,
                 "usage": None,
                 "code": getattr(error, "code", "provider_error"),
+                "request_metrics": request_metrics,
+                "attempts": json.loads((folder / "attempts.json").read_text())
+                if (folder / "attempts.json").exists()
+                else [],
             }
             (folder / "failure.json").write_text(
                 json.dumps(metadata),
@@ -337,7 +369,12 @@ class OpenAIProvider(RecordedProvider):
                     "schema": request.schema,
                 }
             },
+            **({"max_output_tokens": request.output_budget} if request.output_budget else {}),
         )
+        if response.status != "completed":
+            raise ProviderError(
+                "Incomplete model response; refusing truncated structured output", code="incomplete_response"
+            )
         return json.loads(response.output_text), {
             "usage": response.usage.model_dump() if response.usage else None,
             "model_reported": response.model,

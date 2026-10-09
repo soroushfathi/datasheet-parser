@@ -1,0 +1,22 @@
+{
+  "measurement": "offline_source_packet_comparison",
+  "document": "MAX3232",
+  "target": "MAX3232CD / SOIC-16 (D)",
+  "index_version": "structural-8",
+  "retrieval": "Contextual BM25, top_k=6, no embeddings or reranker",
+  "section": 2,
+  "legacy": {"source_text_chars": 137526, "page_images": 25},
+  "retrieval_v2": {"source_text_chars": 24216, "page_images": 11},
+  "all_sections_reference_citation_coverage": 0.8,
+  "requirements_with_missing_reference_citations": 15,
+  "reference_status": "assistant-authored candidate, pending human approval",
+  "answer_accuracy": null,
+  "measured_token_savings": null,
+  "measured_wall_time_savings": null,
+  "limitations": [
+    "Reference citation availability is not answer accuracy or complete retrieval recall.",
+    "Page images, table representations and complete text pages can cover reference citations.",
+    "Unknown or unmet evidence can trigger a broader packet and increase runtime and tokens.",
+    "The full reviewed model-output benchmark has not completed."
+  ]
+}
