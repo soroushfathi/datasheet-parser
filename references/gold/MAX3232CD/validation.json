@@ -1,0 +1,126 @@
+{
+  "reference_status": "candidate_pending_human_review",
+  "schema_valid": true,
+  "source_sha256_verified": true,
+  "section_count": 17,
+  "requirement_count": 51,
+  "claim_count": 147,
+  "pin_count": 16,
+  "circuit_variant_count": 6,
+  "cited_evidence_count": 40,
+  "structural_errors": 0,
+  "structural_warnings": [
+    {
+      "code": "unresolved_requirement",
+      "message": "DIN high/low requirements are supported. Page 12 additionally names FORCEOFF/FORCEON, absent from the complete pin table; do not invent them.",
+      "claim_id": "1.connections",
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "Preserve the source inconsistency; do not assign pin numbers or fabricate controls.",
+      "claim_id": "1.ref.006",
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_pin_type",
+      "message": "1",
+      "claim_id": null,
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_pin_type",
+      "message": "3",
+      "claim_id": null,
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_pin_type",
+      "message": "4",
+      "claim_id": null,
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_pin_type",
+      "message": "5",
+      "claim_id": null,
+      "severity": "warning",
+      "section_id": 1
+    },
+    {
+      "code": "unresolved_requirement",
+      "message": "FORCEOFF/FORCEON are named in 9.2.2 but absent from pin table; no formal errata/workaround section was found. Do not silently repair the document.",
+      "claim_id": "15.issues",
+      "severity": "warning",
+      "section_id": 15
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "Document-level inconsistency, not new pins or a discovered feature; no manufacturer workaround is given.",
+      "claim_id": "15.ref.001",
+      "severity": "warning",
+      "section_id": 15
+    },
+    {
+      "code": "unresolved_requirement",
+      "message": "MAX3232CD MSL/Peak reflow cell says Call TI. No numeric profile/peak is established for CD; 260 C belongs to other ordering codes.",
+      "claim_id": "17.reflow",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_requirement",
+      "message": "MSL and lead finish say Call TI. No D stencil dimensions are included; DB/DW/PW stencil examples are not applicable.",
+      "claim_id": "17.assembly",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_requirement",
+      "message": "Exact MAX3232CD RoHS cell is a dash, not Yes or No. REACH compliance is not established in the supplied PDF.",
+      "claim_id": "17.compliance",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "Literal MAX3232CD cell. Do not substitute Level-1-260C-UNLIM from MAX3232CDR.",
+      "claim_id": "17.ref.001",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "Exact MAX3232CD lead-finish cell; no finish material should be inferred.",
+      "claim_id": "17.ref.002",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "No numeric MSL rating is supplied for exact ordering code MAX3232CD.",
+      "claim_id": "17.ref.003",
+      "severity": "warning",
+      "section_id": 17
+    },
+    {
+      "code": "unresolved_claim",
+      "message": "A dash is absence of a declaration, not a negative compliance result; do not copy Yes from a different ordering row.",
+      "claim_id": "17.ref.004",
+      "severity": "warning",
+      "section_id": 17
+    }
+  ],
+  "finding_status_counts": {
+    "present": 36,
+    "conflicting": 2,
+    "not_found": 10,
+    "ambiguous": 3
+  },
+  "note": "Schema and deterministic checks verify structure, not truth or completeness. Warnings intentionally preserve source ambiguity and unspecified capacitor-pin electrical types."
+}

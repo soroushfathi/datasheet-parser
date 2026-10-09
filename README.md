@@ -288,6 +288,12 @@ abstention counts. Common numeric unit conversions are normalized. Conditions ar
 identity. Text paraphrases are not semantically graded. Generated component names must be aligned
 before scoring. Ground truth must be independently human-reviewed; a second LLM answer is not gold.
 
+A source-grounded [MAX3232CD reference candidate](references/gold/MAX3232CD/README.md) is
+available under `references/gold/`, covering all 17 sections with evidence and a human-review
+checklist. It is **not yet human-reviewed gold**. The folder name does not override its explicit
+`candidate_pending_human_review` provenance. See its guide for the comparison command,
+annotation conventions and datasheet pitfalls; do not feed it to the extraction pipeline.
+
 ```powershell
 uv run pytest -q
 uv run ruff check src tests
