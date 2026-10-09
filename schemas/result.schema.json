@@ -1,0 +1,697 @@
+{
+  "$defs": {
+    "Circuit": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "figure": {
+          "title": "Figure",
+          "type": "string"
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/Component"
+          },
+          "title": "Components",
+          "type": "array"
+        },
+        "nets": {
+          "items": {
+            "$ref": "#/$defs/Net"
+          },
+          "title": "Nets",
+          "type": "array"
+        },
+        "ic_ref": {
+          "title": "Ic Ref",
+          "type": "string"
+        },
+        "explicitly_unconnected_pads": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Explicitly Unconnected Pads",
+          "type": "array"
+        },
+        "unobserved_pads": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unobserved Pads",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "ambiguities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ambiguities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "figure",
+        "conditions",
+        "components",
+        "nets",
+        "ic_ref",
+        "explicitly_unconnected_pads",
+        "unobserved_pads",
+        "evidence_ids",
+        "ambiguities"
+      ],
+      "title": "Circuit",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "requirement_id": {
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "parameter": {
+          "title": "Parameter",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "quantity",
+            "text",
+            "equation",
+            "dimension",
+            "interface",
+            "graph",
+            "note"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "raw_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Raw Value"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "applies_to": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Applies To",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "requirement_id",
+        "parameter",
+        "kind",
+        "raw_value",
+        "value",
+        "quantity",
+        "conditions",
+        "applies_to",
+        "evidence_ids",
+        "status",
+        "explanation"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Component": {
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "title": "Ref",
+          "type": "string"
+        },
+        "ref_origin": {
+          "enum": [
+            "source",
+            "generated"
+          ],
+          "title": "Ref Origin",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        },
+        "terminals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Terminals",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ref",
+        "ref_origin",
+        "kind",
+        "value",
+        "terminals",
+        "evidence_ids"
+      ],
+      "title": "Component",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "status",
+        "evidence_ids",
+        "reason"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "Net": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "ambiguous"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "nodes",
+        "evidence_ids",
+        "status"
+      ],
+      "title": "Net",
+      "type": "object"
+    },
+    "Pin": {
+      "additionalProperties": false,
+      "properties": {
+        "pad": {
+          "title": "Pad",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "electrical_type": {
+          "enum": [
+            "input",
+            "output",
+            "bidirectional",
+            "power_in",
+            "power_out",
+            "ground",
+            "passive",
+            "open_drain",
+            "nc",
+            "unknown"
+          ],
+          "title": "Electrical Type",
+          "type": "string"
+        },
+        "functions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Functions",
+          "type": "array"
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "connection_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Connection Requirements",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "pad",
+        "name",
+        "electrical_type",
+        "functions",
+        "conditions",
+        "connection_requirements",
+        "evidence_ids"
+      ],
+      "title": "Pin",
+      "type": "object"
+    },
+    "Quantity": {
+      "additionalProperties": false,
+      "properties": {
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum"
+        },
+        "typical": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Typical"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Maximum"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expression"
+        }
+      },
+      "required": [
+        "minimum",
+        "typical",
+        "maximum",
+        "unit",
+        "expression"
+      ],
+      "title": "Quantity",
+      "type": "object"
+    },
+    "SectionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "maximum": 17,
+          "minimum": 1,
+          "title": "Section Id",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "title": "Pins",
+          "type": "array"
+        },
+        "circuits": {
+          "items": {
+            "$ref": "#/$defs/Circuit"
+          },
+          "title": "Circuits",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "section_id",
+        "status",
+        "findings",
+        "claims",
+        "pins",
+        "circuits",
+        "notes"
+      ],
+      "title": "SectionResult",
+      "type": "object"
+    },
+    "Status": {
+      "enum": [
+        "present",
+        "not_found",
+        "not_applicable",
+        "ambiguous",
+        "conflicting",
+        "unreadable"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "manufacturer": {
+          "title": "Manufacturer",
+          "type": "string"
+        },
+        "part_number": {
+          "title": "Part Number",
+          "type": "string"
+        },
+        "ordering_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ordering Code"
+        },
+        "package_name": {
+          "title": "Package Name",
+          "type": "string"
+        },
+        "package_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Package Code"
+        },
+        "temperature_grade": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Temperature Grade"
+        },
+        "document_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Document Revision"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "ambiguous"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "manufacturer",
+        "part_number",
+        "ordering_code",
+        "package_name",
+        "package_code",
+        "temperature_grade",
+        "document_revision",
+        "evidence_ids",
+        "status",
+        "reason"
+      ],
+      "title": "Target",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "parse_id": {
+      "title": "Parse Id",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/Target"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/SectionResult"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "reviewed",
+        "needs_review"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "issues": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "document_id",
+    "parse_id",
+    "target",
+    "sections",
+    "run_id",
+    "status",
+    "issues",
+    "evidence",
+    "metadata"
+  ],
+  "title": "ExtractionResult",
+  "type": "object"
+}
