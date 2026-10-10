@@ -61,6 +61,10 @@ reasoning and removing blind review are not part of this comparison. New runs ha
 `packet_version=budget-v1`, `contract_version=compact-v2`, `scheduler_version=dag-v1`
 and `prompt_version=3`. Older runs retain their previous workflow and contract.
 
+Review also receives the aliases newly available to it but absent from each first reader's
+packet. This distinguishes an extraction coverage gap from an incorrect fact or a false
+absence claim; reviewer access does not retroactively give an extractor that evidence.
+
 The index includes its algorithm revision in its digest. Changing heading/linking logic
 invalidates its cache. A changed source/index during a mapped run requires a new run.
 Neither the reference JSON nor its citations are used for indexing or retrieval.
@@ -80,6 +84,10 @@ Heavy sections (1, 2, 3, 7, 9, 10, 14, 15, 16) get larger source budgets. Review
 text allowance, while reserving space for schema, instructions, target and both compact
 answer drafts. A joint source budget counts selected text plus actual image proxy cost;
 the final provider guard counts the complete serialized prompt, schema and images.
+Extraction/blind keep at most four images for simple sections and six for heavy sections.
+Review has a predefined allowance for their union: eight/twelve images respectively,
+still within its image-proxy and complete-request token caps. This is not an expanded
+source search or an outcome-triggered retry.
 
 Optional bundles that do not fit are omitted atomically and recorded as coverage gaps.
 Sources actually cited by either answer are mandatory for review. If mandatory evidence

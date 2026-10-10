@@ -41,10 +41,13 @@ class RetrievalWorkflow:
         # Review needs cited evidence plus a bounded omission audit for every requirement.
         if role == "review":
             multiplier *= 1.5
+        # Two independent readers can cite disjoint images. The review role has a
+        # predefined union allowance; source and complete-request token caps still apply.
+        image_count = config["max_images"] if heavy else min(4, config["max_images"])
         return {
             "text_tokens": int(config["text_token_budget"] * multiplier),
             "image_tokens": int(config["image_token_budget"] * (1.5 if heavy else 1)),
-            "max_images": config["max_images"] if heavy else min(4, config["max_images"]),
+            "max_images": image_count * (2 if role == "review" else 1),
             "total_tokens": max(0, config["request_token_budget"] - reserved_tokens),
         }
 
@@ -410,16 +413,18 @@ class RetrievalWorkflow:
                 f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
             )
             exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+            metrics["serialized_preflight"] = exact_input
+            metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
             if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
+                saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
+                self.store.put("evidence_packets", {**saved, "metrics": metrics})
                 raise ValueError(f"Review {sid}: cited evidence exceeds packet budget after complete serialization; inspect packet metrics.")
             if overflow:
                 metrics["reservation_warning"] = overflow
                 metrics["mandatory_overflow"] = {}
-                packet.metrics.update(metrics)
-                saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
-                self.store.put("evidence_packets", {**saved, "metrics": metrics})
-            metrics["serialized_preflight"] = exact_input
-            metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
+            packet.metrics.update(metrics)
+            saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
+            self.store.put("evidence_packets", {**saved, "metrics": metrics})
         parsed = self.call(
             run["id"],
             f"review:{sid}",

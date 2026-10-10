@@ -405,3 +405,58 @@ def test_review_reservation_overflow_uses_complete_request_preflight_without_dro
     assert not packet["metrics"]["mandatory_overflow"]
     assert store.get("reviews", f"{run_id}:4")
     assert len(store.find("evidence_packets", {"run_id": run_id})) == 3
+
+
+def test_review_retains_union_of_seven_cited_images_from_bounded_first_readers(tmp_path, monkeypatch):
+    store = source([""] * 7)
+    parser, provider, run_id = engine(tmp_path, store)
+    run = store.get("runs", run_id)
+    _, retriever = parser.retrieval_context(run)
+    image_chunks = {c["page"]: c["id"] for c in retriever.chunks if c["visual"]}
+    assert set(image_chunks) == set(range(1, 8))
+    active = {"role": "extract"}
+
+    def fixture_selection(req, target, **options):
+        pages = {"extract": range(1, 5), "blind": range(5, 8), "review": [1]}[active["role"]]
+        selected = {image_chunks[page] for page in pages}
+        return selected, {cid: {"route": "seed", "rank_score": 10} for cid in selected}
+
+    ordinary_packet = parser.retrieval_packet
+
+    def packet_for_role(run, sid, **options):
+        active["role"] = options.get("role") or ("blind" if options.get("complement") else "extract")
+        return ordinary_packet(run, sid, **options)
+
+    monkeypatch.setattr(retriever, "select", fixture_selection)
+    monkeypatch.setattr(parser, "retrieval_packet", packet_for_role)
+    parser.map_retrieval(run)
+    original = parser.extract_retrieved(run, 3)
+    independent = parser.blind_retrieved(run, 3)
+
+    # Record facts supported across each reader's actual supplied pages, not extra source.
+    original["section"]["claims"][0]["evidence_ids"] = [f"parse:p{n}" for n in range(1, 5)]
+    independent["section"]["claims"][0]["evidence_ids"] = [f"parse:p{n}" for n in range(5, 8)]
+    store.put("results", original)
+    store.put("blind_reads", independent)
+    parser.review_retrieved(run, 3, original)
+
+    assert [request.task for request in provider.requests] == ["extract:3", "blind:3", "review:3"]
+    assert [len(request.images) for request in provider.requests] == [4, 3, 7]
+    packets = store.find("evidence_packets", {"run_id": run_id})
+    assert len(packets) == 3
+    assert all(packet["id"].endswith(":0") and not packet["metrics"]["broad_text"] for packet in packets)
+    for role in ["extract", "blind"]:
+        packet = store.get("evidence_packets", f"{run_id}:3:{role}:0")
+        assert packet["metrics"]["image_count"] <= packet["metrics"]["budget"]["max_images"] == 6
+
+    packet = store.get("evidence_packets", f"{run_id}:3:review:0")
+    expected = {f"parse:p{n}" for n in range(1, 8)}
+    assert cited_regions(original["section"]) | cited_regions(independent["section"]) == expected
+    assert expected <= set(packet["aliases"].values())
+    assert packet["metrics"]["image_count"] == 7
+    assert packet["metrics"]["budget"]["max_images"] == 12
+    assert not packet["metrics"]["mandatory_overflow"]
+    review_request = provider.requests[-1]
+    actual = request_input_metrics(review_request.prompt, review_request.schema, review_request.images)
+    assert actual["input_tokens_estimate"] <= run["retrieval_config"]["request_token_budget"] == 20000
+    assert store.get("reviews", f"{run_id}:3")
