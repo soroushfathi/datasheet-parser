@@ -381,12 +381,24 @@ class RetrievalWorkflow:
             f"INDEPENDENT: {dumps(packet.encode(independent))}\n{packet.text}"
         )
         if optimized:
+            reverse = {region: alias for alias, region in packet.aliases.items()}
+            extra_original = sorted(
+                reverse[rid] for rid in packet.allowed - set(record["supplied_region_ids"])
+            )
+            extra_independent = sorted(
+                reverse[rid] for rid in packet.allowed - set(blind["supplied_region_ids"])
+            )
             prompt += (
                 "\nBoth answers use compact views; omitted empty fields do not mean source absence. "
                 "Check every requirement against the omission-audit source, including agreed facts. "
                 "Cited numeric source lexemes and bounds are preserved. Inspect target scope and "
                 "table column/merged-cell conditions. Output only supported original claim IDs and "
-                "concise issues, not a replacement extraction."
+                "concise issues, not a replacement extraction. "
+                "The lists below identify evidence supplied to you but not to the respective first reader. "
+                "Treat missing facts from these sources as reader coverage gaps. A true statement that "
+                "a source was not supplied is not false merely because you can now see that source.\n"
+                f"ORIGINAL_ADDITIONAL_SOURCE: {json.dumps(extra_original)}\n"
+                f"INDEPENDENT_ADDITIONAL_SOURCE: {json.dumps(extra_independent)}"
             )
         generation_budget = output_budget(sid, "review", rows=len(record["section"]["claims"])) if optimized else 6000
         metrics = {**packet.metrics, "review_original_chars": len(dumps(original)),

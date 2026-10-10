@@ -295,7 +295,21 @@ def test_review_keeps_both_cited_sources_without_carrying_unused_supplied_image(
     assert "parse:p3" not in packet["aliases"].values()
     assert len(next(request for request in provider.requests if request.task == "extract:4").images) == 1
     assert len(next(request for request in provider.requests if request.task == "blind:4").images) == 1
-    assert next(request for request in provider.requests if request.task == "review:4").images == []
+    review_request = next(request for request in provider.requests if request.task == "review:4")
+    assert review_request.images == []
+    original_extra = json.loads(
+        review_request.prompt.split("ORIGINAL_ADDITIONAL_SOURCE: ", 1)[1].split("\n", 1)[0]
+    )
+    independent_extra = json.loads(
+        review_request.prompt.split("INDEPENDENT_ADDITIONAL_SOURCE: ", 1)[1].split("\n", 1)[0]
+    )
+    original_extra_regions = {packet["aliases"][alias] for alias in original_extra}
+    independent_extra_regions = {packet["aliases"][alias] for alias in independent_extra}
+    assert "parse:p2:l1" in original_extra_regions
+    assert "parse:p1:l1" not in original_extra_regions
+    assert "parse:p1:l1" in independent_extra_regions
+    assert "parse:p2:l1" not in independent_extra_regions
+    assert "parse:p3" not in original_extra_regions | independent_extra_regions
     assert packet["metrics"]["role"] == "review"
     assert store.get("evidence_packets", f"{run_id}:4:blind:0")["metrics"]["role"] == "blind"
 
