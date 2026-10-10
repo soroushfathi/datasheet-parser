@@ -45,6 +45,47 @@ QUERY_ALIASES = {
     "17.compliance": "package option addendum RoHS REACH environmental lead finish eco plan",
 }
 
+# Generic source-title routes. They boost actual headings/captions, not occurrences of
+# common electrical words in a long requirement or answers from a reference fixture.
+SOURCE_TOPICS = {
+    1: r"pin (?:configuration|function)",
+    2: r"application information|standard application|typical application|design requirements|design procedure",
+    3: r"absolute maximum|esd ratings",
+    4: r"recommended operating conditions",
+    5: r"power supply recommendations|power requirements|application information|design requirements",
+    6: r"component selection|design procedure|application information|design requirements",
+    7: r"package outline|land pattern|board layout|mechanical dimensions|generic package view",
+    8: r"layout guidelines|^\d+ layout$",
+    9: r"electrical characteristics",
+    10: r"communication interface|feature description|overview|device functional modes",
+    11: r"thermal information|thermal characteristics|thermal metric",
+    12: r"switching characteristics|timing characteristics|parameter measurement",
+    13: r"esd ratings|protection|features",
+    14: r"ordering information|orderable part|device information|packaging information|revision history",
+    15: r"revision history|errata|notes",
+    16: r"typical characteristics|application curves",
+    17: r"package option addendum|packaging information|stencil design|solder|reflow|msl|rohs",
+}
+
+
+SOURCE_REQUIREMENT_TOPICS = {
+    "1.functions": r"pin (?:configuration|function)|feature description|device functional modes",
+    "1.connections": r"pin (?:configuration|function)|application information|standard application|design procedure",
+    "2.components": r"standard application|typical application|design requirements|design procedure|component selection",
+    "4.logic": r"recommended operating conditions|electrical characteristics",
+    "5.decoupling": r"power supply recommendations|standard application|application information|layout guidelines",
+    "6.types": r"component selection|standard application|application information|design procedure",
+    "10.protocols": r"communication interface|overview|features|design requirements",
+    "10.address": r"address|pin configuration|device functional modes|overview",
+    "10.levels": r"recommended operating conditions|electrical characteristics|interface",
+    "11.layout": r"layout guidelines|layout example|board layout|land pattern|thermal layout",
+    "11.protection": r"thermal protection|thermal shutdown|thermal characteristics|thermal information|derating",
+    "13.features": r"feature description|electrical characteristics|esd ratings|protection|features",
+    "13.behavior": r"feature description|electrical characteristics|esd ratings|protection",
+    "16.inventory": r"typical characteristics|application curves|parameter measurement|timing waveform",
+    "16.conditions": r"typical characteristics|application curves|parameter measurement|timing waveform",
+}
+
 
 def tokens(text):
     words = [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in STOP]
@@ -139,7 +180,11 @@ class Retriever:
         query = (" ".join(KEYWORDS[sid]) + " " + requirement_id.split(".")[1]) if complement else text
         query += " " + QUERY_ALIASES.get(requirement_id, "")
         # Exact part names recur in headers/order tables and must not dominate topical relevance.
-        ranked = self.rank(query, self.config["top_k"] * (3 if expanded else 1))
+        bounded = self.config.get("packet_version") == "budget-v1"
+        limit = self.config["top_k"] * (3 if expanded else 1)
+        ranked = (
+            self._bounded_rank(query, requirement_id, target, limit) if bounded else self.rank(query, limit)
+        )
         seeds = {cid for cid, _ in ranked}
         if sid in {7, 11, 14, 17}:
             seeds.update(
@@ -149,18 +194,138 @@ class Retriever:
             )
         if sid == 2:
             seeds.update(cid for cid, _ in self.rank("pin configuration pin functions numbering", 2))
-        # Never silently lose image-only/unknown pages from a text-only index.
-        seeds |= {c["id"] for c in self.chunks if c["unknown_visual"]}
+        # Old runs preserve their original universal visual selection. Budgeted runs route
+        # pages by indexed text/captions and expose unclassified pages as coverage gaps.
+        # An unknown image with no useful text cannot establish a source-absence decision.
+        if not bounded:
+            seeds |= {c["id"] for c in self.chunks if c["unknown_visual"]}
         selected = self.expand(seeds, target)
+        mandatory = self.required_closure(seeds) if bounded else set()
         return selected, {
             cid: {
-                "route": "seed" if cid in seeds else "reference_or_condition",
+                "route": "seed"
+                if cid in seeds
+                else "required_condition"
+                if cid in mandatory
+                else "reference_or_condition",
                 "rank_score": dict(ranked).get(cid),
+                **({"requirement_id": requirement_id} if bounded else {}),
             }
             for cid in selected
         }
 
+    def _bounded_rank(self, query, requirement_id, target, limit):
+        sid = int(requirement_id.split(".")[0])
+        lexical = dict(self.rank(query, len(self.chunks)))
+        scored = []
+        package = target.get("package_code")
+        source_topic = SOURCE_REQUIREMENT_TOPICS.get(requirement_id, SOURCE_TOPICS[sid])
+        for chunk in self.chunks:
+            if package and chunk["package_hint"] and chunk["package_hint"] != package:
+                continue
+            heading = chunk.get("heading_candidate", chunk["context"]).lower()
+            text = chunk["text"].lower()
+            topic = bool(re.search(source_topic, heading))
+            # Unnumbered package captions/order-table headers do not have a numbered
+            # heading. Read their source labels as routing metadata as well.
+            if sid in {7, 14, 17}:
+                topic |= bool(re.search(source_topic, text))
+            if sid == 3:
+                topic = bool(
+                    re.search(
+                        "esd ratings" if requirement_id.endswith(".esd") else "absolute maximum", heading
+                    )
+                )
+            if sid == 14 and not requirement_id.endswith(".revision_lifecycle"):
+                topic = bool(
+                    re.search(
+                        r"ordering information|orderable part|device information|packaging information",
+                        heading + "\n" + text,
+                    )
+                )
+            legal_notice = bool(re.search(r"^\s*important notice|^\s*disclaimer", text, re.MULTILINE))
+            protection_detail = (
+                sid == 13
+                and not legal_notice
+                and bool(
+                    re.search(
+                        r"short[ -]?circuit|short(?:s|ed|ing)? to ground|over[ -]?voltage|under[ -]?voltage|current limit|fault|latch[ -]?up",
+                        text,
+                    )
+                )
+            )
+            if protection_detail:
+                topic = True
+            if requirement_id == "15.footnotes":
+                topic = bool(
+                    re.search(
+                        r"^\s*(?:\(\d+\)|NOTES?\s*[:.]|[A-Z]\.\s+)|\b(?:test conditions|unless otherwise (?:noted|specified))\b",
+                        text,
+                        re.MULTILINE | re.IGNORECASE,
+                    )
+                )
+            score = lexical.get(chunk["id"], 0) + (10 if topic else 0)
+            if protection_detail:
+                score += 3
+            if sid == 7 and chunk["package_hint"] == package and chunk["visual"]:
+                score += 10
+            # An unclassified image surrounded by package appendix pages is a relevant
+            # mechanical search candidate, never an inferred package identification.
+            if chunk["unknown_visual"] and sid in {7, 17} and "package" in heading:
+                score += 8
+            if (
+                requirement_id == "15.footnotes"
+                and topic
+                and re.search(r"characteristics|rating|operating|measurement", heading)
+            ):
+                score += 2
+            if requirement_id == "15.footnotes" and topic and "package appendix" in heading:
+                score += 1
+            if requirement_id == "15.footnotes" and chunk["unknown_visual"] and "package" in heading:
+                score += 11
+            if sid == 14 and target.get("part_number") and target["part_number"].lower() in text and topic:
+                score += 3
+            if score > 0:
+                scored.append((chunk["id"], score, chunk["ordinal"]))
+        ranked = sorted(scored, key=lambda r: (-r[1], r[2]))
+        # Cover distinct relevant source titles before selecting many fragments under
+        # one title. A chosen heading still brings its complete atomic table closure.
+        first, repeated, seen = [], [], set()
+        for row in ranked:
+            chunk = self.by_id[row[0]]
+            heading = (
+                chunk["page"]
+                if requirement_id == "15.footnotes"
+                else chunk.get("heading_candidate", chunk["context"])
+            )
+            if row[1] >= 8 and heading not in seen:
+                first.append(row)
+                seen.add(heading)
+            else:
+                repeated.append(row)
+        return [(cid, round(score, 6)) for cid, score, _ in (first + repeated)[:limit]]
+
     def expand(self, seeds, target):
+        if self.config.get("packet_version") == "budget-v1":
+            # Required condition/footnote closure is transitive. Optional references are
+            # followed once; recursively walking their references recreates the document.
+            selected = self.required_closure(seeds)
+            optional = {
+                edge["chunk_id"]
+                for cid in seeds
+                if cid in self.by_id
+                for edge in self.by_id[cid].get("typed_links", [])
+                if not edge["required"]
+            }
+            selected |= self.required_closure(optional)
+            package = target.get("package_code")
+            return {
+                cid
+                for cid in selected
+                if not package
+                or not self.by_id[cid]["package_hint"]
+                or self.by_id[cid]["package_hint"] == package
+            }
         selected = set(seeds)
         frontier = set(seeds)
         # Two hops preserve referenced objects plus their source-page conditions. Unrestricted
@@ -176,3 +341,17 @@ class Retriever:
             or not self.by_id[cid]["package_hint"]
             or self.by_id[cid]["package_hint"] == package
         }
+
+    def required_closure(self, seeds):
+        selected = set(seeds) & set(self.by_id)
+        frontier = set(selected)
+        while frontier:
+            linked = {
+                edge["chunk_id"]
+                for cid in frontier
+                for edge in self.by_id[cid].get("typed_links", [])
+                if edge["required"] and edge["chunk_id"] in self.by_id
+            } - selected
+            selected.update(linked)
+            frontier = linked
+        return selected

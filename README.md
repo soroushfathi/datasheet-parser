@@ -26,6 +26,8 @@ are in [`landing/README.md`](landing/README.md). The page serves static files on
 این فلو برای اجرای جدید `retrieval-v2` است. اجراهای قدیمی و `--pipeline legacy` همان
 mapping شش‌صفحه‌ای و پرامپت‌های قبلی را ادامه می‌دهند. تنظیمات بازیابی و تعداد workerها
 داخل run ثبت می‌شوند؛ schema نهایی همچنان نسخهٔ `1.0` و شامل هر ۱۷ بخش است.
+اجرای جدید از `budget-v1`، قرارداد داخلی `compact-v2` و صف وابستگی `dag-v1` استفاده
+می‌کند. جزئیات بودجه‌ها و روش اندازه‌گیری زمان در [راهنمای کارایی](docs/performance.md) آمده است.
 
 مدل نوشته‌شده روی نودهای AI، مدل **پیش‌فرض پیکربندی پروژه** است:
 `gpt-6-astra` با `reasoning=high` و provider برابر `codex`. این نام ادعای تشخیص مدل واقعی
@@ -42,14 +44,18 @@ flowchart TD
     T --> R["Code · ساخت اجرای مستقل با run_id<br/>Engine.create_run()<br/>ثبت هدف، provider، مدل و reasoning"]
     R --> M["Code / Heuristic · نقشهٔ شواهد برای ۵۱ نیازمندی<br/>map_retrieval() + Retriever.select()<br/>Contextual BM25؛ embedding و reranker محلی اختیاری"]
 
-    M --> P["Code / Heuristic · بستهٔ شواهد مرتبط<br/>retrieval_packet() + build_packet()<br/>حذف تکرار، ارجاع دور، پاورقی، شناسهٔ کوتاه و تصاویر منتخب"]
+    M --> S["Control · صف مراحل با حداکثر ۳ درخواست هم‌زمان<br/>Engine.schedule_stages() · dag-v1<br/>اولویت شروع بخش‌های سنگین؛ تنظیم پیش‌فرض ۲ worker"]
+    S --> P["Code / Heuristic · بستهٔ شواهد مرتبط<br/>retrieval_packet() + build_bounded_packet()<br/>جدول و شرایط کامل؛ بودجهٔ توکن و تصویر؛ crop امن جدول"]
     P --> E["AI · استخراج تخصصی یک بخش<br/>Engine.extract_section() · نقش تخصصی از SECTIONS<br/>gpt-6-astra · high"]
     E --> V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار<br/>شواهد ناکافی ثبت می‌شوند؛ expanded غیرفعال است"]
-    V --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.review_section() · blind read<br/>بدون دیدن پاسخ استخراج اول<br/>gpt-6-astra · high"]
-    B --> A["AI · مقایسه دو پاسخ با سند اصلی<br/>Engine.review_section() · audit<br/>ثبت خطاها و موارد جاافتاده<br/>gpt-6-astra · high"]
-    A --> Q{"Control · بخش دیگری باقی مانده؟<br/>Engine.resume() · LangGraph"}
-    Q -->|"بله"| P
-    Q -->|"خیر"| X["Code · کنترل نهایی و ارتباط بین بخش‌ها<br/>Engine.export()<br/>validate_section() + validate_cross_sections()"]
+    S --> BP["Code / Heuristic · بازیابی مکمل برای بازخوانی<br/>retrieval_packet(complement=True)<br/>بدون استفاده از پاسخ استخراج اول"]
+    BP --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.blind_retrieved() · blind read<br/>هم‌زمان با استخراج؛ بدون پاسخ اول<br/>gpt-6-astra · high"]
+    V --> RP["Code · ورودی فشردهٔ بازبین<br/>compact_review() + cited_regions()<br/>هر دو پاسخ + همهٔ شواهد موردارجاع + جست‌وجوی موارد جاافتاده"]
+    B --> RP
+    RP --> A["AI · مقایسه دو پاسخ با سند اصلی<br/>Engine.review_section() · audit<br/>فقط پس از تکمیل extract و blind همان بخش<br/>gpt-6-astra · high"]
+    A --> Q{"Control · همهٔ مراحل تکمیل شدند؟<br/>Engine.resume() · DAG scheduler"}
+    Q -->|"خیر؛ ادامهٔ صف"| S
+    Q -->|"بله"| X["Code · کنترل نهایی و ارتباط بین بخش‌ها<br/>Engine.export()<br/>validate_section() + validate_cross_sections()"]
 
     X --> J["Code · خروجی JSON شامل هر ۱۷ بخش<br/>datasheet export → write_export()<br/>شواهد، گزارش بازبینی و موارد حل‌نشده"]
     J --> H["Human · مشاهده شواهد و گزارش بازبینی<br/>datasheet review / inspect"]
@@ -66,17 +72,18 @@ flowchart TD
     classDef control fill:#f0f0f0,stroke:#666,color:#222;
     class U,T,H human;
     class D,E,B,A llm;
-    class DH,P heuristic;
-    class I,IX,R,M,V,X,J,EV,MON,INS code;
-    class Q control;
+    class DH,P,BP heuristic;
+    class I,IX,R,M,V,RP,X,J,EV,MON,INS code;
+    class Q,S control;
 ```
 
 ### ارتباط فلو با کد و نقش‌های AI
 
-نودهای بالا مراحل منطقی پردازش‌اند. گراف اجرایی داخل
-[`Engine.resume()`](src/datasheet_parser/engine.py) فقط سه نود `map`، `extract` و `review`
-دارد؛ انتخاب شواهد و اعتبارسنجی داخل توابع آن‌ها اجرا می‌شوند. بازخوانی مستقل و مقایسه
-دو درخواست جداگانهٔ AI داخل `review_section()` هستند. در مسیر مرحله‌به‌مرحلهٔ CLI، پس از
+نودهای بالا مراحل منطقی پردازش‌اند. اجرای جدید داخل
+[`Engine.resume()`](src/datasheet_parser/engine.py) ابتدا نقشهٔ شواهد را می‌سازد و سپس
+`schedule_stages()` مراحل `extract`، `blind` و `review` را در یک pool محدود اجرا می‌کند.
+استخراج و بازخوانی مستقل وابستگی به یکدیگر ندارند؛ بازبین منتظر تکمیل هر دو می‌ماند.
+LangGraph و ترتیب قبلی برای runهای قدیمی حفظ شده‌اند. در مسیر مرحله‌به‌مرحلهٔ CLI، پس از
 پایان `extract`، کاربر دستور `export` را اجرا می‌کند؛ دستور یکپارچهٔ `run` این انتقال را
 خودکار انجام می‌دهد. خطوط نقطه‌چین، ابزارهای مشاهدهٔ وضعیت‌اند و ترتیب اجرای مراحل نیستند.
 
@@ -85,7 +92,7 @@ flowchart TD
 | شناسایی هدف | `Engine.discover()` | یافتن ترکیب‌های واقعی مدل/پکیج/گرید با شاهد؛ `gpt-6-astra / high` |
 | نقشهٔ شواهد، کد | `Engine.map_retrieval()` | رتبه‌بندی و اتصال شواهد برای تمام نیازمندی‌ها؛ بدون درخواست LLM |
 | استخراج‌گر تخصصی | `Engine.extract_section()` | استخراج یک بخش با نقش تخصصی جدول زیر؛ `gpt-6-astra / high` |
-| بازخوان مستقل | `Engine.review_section()` → `blind:{sid}` | استخراج مجدد بدون پاسخ اول؛ `gpt-6-astra / high` |
+| بازخوان مستقل | `Engine.blind_retrieved()` → `blind:{sid}` | استخراج مجدد بدون پاسخ اول؛ `gpt-6-astra / high` |
 | بازبین مقایسه‌ای | `Engine.review_section()` → `review:{sid}` | سنجش هر دو پاسخ با منبع، کشف خطا و حذف‌شدگی؛ `gpt-6-astra / high` |
 
 تخصص استخراج‌گر از [`requirements.SECTIONS`](src/datasheet_parser/requirements.py) انتخاب
@@ -116,11 +123,13 @@ flowchart TD
 ### Retrieval, packet inspection and comparison
 
 پیش‌فرض بازیابی **Contextual BM25** روی متن قطعات همراه عنوان بخش است. این زمینه از
-ساختار سند ساخته می‌شود و خودش مدرک نیست. embedding و reranker محلی اختیاری‌اند؛ هیچ
-مدل معنایی یا دانلود مدل به‌طور پیش‌فرض فعال نمی‌شود. روابط عنوان/جدول، پاورقی، ادامه و
-ارجاع‌های دور در Mongo ذخیره می‌شوند. گسترش روابط دو hop دارد تا یک ارجاع عمومی دوباره
-کل سند را وارد درخواست نکند. جدول‌ها کامل حفظ می‌شوند؛ عکس هر صفحه یک بار ارسال می‌شود.
-برش خودکار شکل‌ها فعلاً انجام نمی‌شود تا شمارهٔ پایه و اتصال مدار از تصویر حذف نشود.
+ساختار سند و نزدیک‌ترین عنوان هر جدول ساخته می‌شود و خودش مدرک نیست. embedding و
+reranker محلی اختیاری‌اند؛ هیچ مدل معنایی به‌طور پیش‌فرض دانلود نمی‌شود. روابط صریح
+عنوان/جدول، پاورقی، شرایط، ادامه و ارجاع‌های دور در Mongo ذخیره می‌شوند. در نسخهٔ بودجه‌ای،
+شرایط ضروری به‌صورت کامل و ارجاع‌های اختیاری یک hop دنبال می‌شوند. انتخاب بر اساس
+موضوع نیازمندی و پکیج انجام می‌شود؛ جدول و شرایطش یک بستهٔ غیرقابل‌برش هستند.
+تصویر جدول فقط وقتی برش می‌خورد که مختصات معتبر و عنوان/پاورقی داخل crop باقی بمانند.
+مدار، نقشهٔ مکانیکی و صفحات تصویری ناشناخته عکس کامل دارند. crop مجوز ارجاع به کل صفحه نیست.
 
 ابتدا catalog را آماده کن، سپس یک run بدون شروع استخراج بساز و بسته‌ها را بررسی کن:
 
@@ -148,7 +157,10 @@ MAX3232CD همچنان candidate نیازمند بررسی انسانی است. 
 باعث درخواست مجدد یا بازیابی گسترده‌تر نمی‌شوند. درخواست شواهد حل‌نشده در notes ثبت
 می‌شود و نتیجه را `ambiguous` می‌کند؛ اطلاعات تصاویر بررسی‌نشده نیز همچنان با هشدار
 ثبت می‌شوند. نبود پاسخ در بستهٔ بازیابی‌شده به معنای تأیید نبود اطلاعات در کل سند نیست.
-`DATASHEET_PACKET_TEXT_BUDGET` بودجهٔ نرم کاراکتری است؛ تجاوز ثبت می‌شود و شواهد قطع نمی‌شوند.
+در runهای جدید بودجهٔ متن با tokenizer سنجیده می‌شود و هزینهٔ تصویر یک تخمین هندسی
+برای کنترل اندازه است. شواهد اختیاری به‌صورت bundle انتخاب یا حذف می‌شوند؛ جدول یا
+پاورقی وسط داده قطع نمی‌شود. عبور شواهد اجباری از بودجه، خطای روشن قبل از inference است.
+`DATASHEET_PACKET_TEXT_BUDGET` فقط برای مسیر baseline بودجهٔ نرم کاراکتری است.
 
 بازیابی این نسخه یک تغییر نیازمند benchmark است؛ «مرتبط بودن» رتبه‌بندی تضمین نمی‌کند
 همهٔ واقعیت‌ها پیدا شده‌اند. برای مقایسهٔ کنترل‌شده، همان هدف را در run جداگانه با
@@ -170,18 +182,20 @@ $env:DATASHEET_RERANKER_MODEL = 'D:\Models\your-cross-encoder'
 وزن‌های یک مسیر محلی از مسیر نسخه‌دار جدید استفاده کن. قابلیت vector search دیتابیس
 لازم نیست؛ برای تعداد قطعات یک سند، شباهت روی بردارهای محلی محاسبه می‌شود.
 
-برای آزمایش دو بخش هم‌زمان، در ساخت run جدید `--workers 2` بده. هر بخش provider و لاگ
-مستقل دارد، و extract → blind → review همان بخش ترتیبی است. پیش‌فرض یک worker است؛
+برای حداکثر سه درخواست هم‌زمان، در ساخت run جدید `--workers 3` بده. پیش‌فرض دو worker
+است؛ extract و blind مستقل اجرا می‌شوند و review به تکمیل هر دو وابسته است. هر thread
+provider مستقل و هر درخواست لاگ جدا دارد. این سقف، تعداد کل درخواست‌های جاری در run است.
 هم‌زمانی مصرف توکن را کاهش نمی‌دهد و ممکن است محدودیت سرویس را زودتر فعال کند.
 `trace` زمان مراحل کد، اندازهٔ درخواست، تعداد/ابعاد عکس‌ها، usage و retry را نشان می‌دهد.
 بودجهٔ خروجی در Codex راهنمای پرامپت است؛ در OpenAI API سقف کل خروجی API است، و پاسخ
 ناقص پذیرفته نمی‌شود. درصد بهبود زمان و دقت فقط پس از benchmark واقعی گزارش می‌شود.
 
-اندازهٔ بستهٔ netlist در [بررسی MAX3232](benchmarks/max3232-packet-comparison.json)
+در بررسی تاریخی پیش از `budget-v1`، اندازهٔ بستهٔ netlist در [بررسی MAX3232](benchmarks/max3232-packet-comparison.json)
 از ۱۳۷٬۵۲۶ به ۲۴٬۲۱۶ کاراکتر و از ۲۵ به ۱۱ تصویر کاهش یافته است. پوشش ارجاع‌های مرجع
 candidate در بسته‌های اولیهٔ تمام بخش‌ها ۸۰٪ بود؛ ۱۵ نیازمندی ارجاع جاافتاده دارند.
 این عدد دقت پاسخ نیست و نشان می‌دهد ارزیابی بازیابی و خروجی واقعی پیش از ادعای حفظ
-کیفیت ضروری است. صرفه‌جویی واقعی توکن و زمان هنوز اندازه‌گیری نهایی نشده است.
+کیفیت ضروری است. این اندازه‌گیری مربوط به نسخهٔ قبلی است؛ معیارها و نتایج نسخهٔ بودجه‌ای
+در [راهنمای کارایی](docs/performance.md) جدا گزارش می‌شوند.
 
 [`MongoStore`](src/datasheet_parser/store.py) متادیتا، وضعیت و نتایج مراحل را در MongoDB
 نگه می‌دارد و GridFS فایل‌های PDF، تصاویر و لاگ‌ها را ذخیره می‌کند. `Engine.call()` پاسخ
@@ -436,9 +450,11 @@ Each attempt streams logs to disk while running, and completed attempts are arch
 
 ## Contracts and evaluation
 
-`schemas/result.schema.json` is the export schema; `schemas/section.schema.json` is the strict
-model-facing schema. Pydantic also enforces all 17 unique sections, and runtime validators verify
-the requirement checklist. A generic JSON Schema validator alone does not execute these extra rules.
+`schemas/result.schema.json` is the export schema; `schemas/section.schema.json` describes a
+complete public section. Model-facing contracts are generated per section and run version by
+`contracts.section_contract()` and recorded as `schema.json` beside each request. Pydantic also
+enforces all 17 unique sections, and runtime validators verify the requirement checklist. A generic
+JSON Schema validator alone does not execute these extra rules.
 
 Statuses distinguish `present`, `not_found`, `not_applicable`, `ambiguous`, `conflicting`, `unreadable`.
 Processing failure is stored on the run/event, never disguised as missing source data.
@@ -469,9 +485,9 @@ separate integration checks.
 - The working ingestion backend is pdfplumber + PDFium. Docling is an optional dependency for a
   later adapter, not an implemented alternative. Sparse pages retain images and require visual reading;
   there is no dedicated OCR engine yet.
-- Figure-level segmentation, automatic header/footnote linking and circuit overlays are not yet
-  implemented. Whole-page images and line/table region crops are available; relationships are marked
-  unverified at ingestion rather than fabricated.
+- Table heading/condition/footnote links and safe table crops are implemented as source-based
+  heuristics; circuit/figure segmentation and connectivity overlays are not yet implemented.
+  Relationship heuristics are not proof of semantic correctness.
 - The workflow reports review issues; it does not yet automatically repair factual disagreements.
   Human review notes are append-only and do not imply that an issue was resolved.
 - Prompts are versioned in code. Full-text packets are bounded; oversized documents fail explicitly
@@ -480,7 +496,8 @@ separate integration checks.
   is claimed without a separate reference dataset.
 - Trace data is persisted locally/Mongo. Existing Langfuse on dana is not connected until project
   credentials and an integration configuration are supplied.
-- Run one worker per run ID. Distributed worker leasing is not yet implemented; do not `resume`
+- Run one CLI process per run ID. Its scheduler supports up to three workers. Distributed worker
+  leasing is not yet implemented; do not `resume`
   the same run in another terminal while it is still active.
 
 ## Deployment

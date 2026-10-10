@@ -11,7 +11,7 @@ dependencies = [
   "pydantic>=2.10,<3", "pymongo>=4.10,<5", "typer>=0.15,<1",
   "rich>=13,<15", "pdfplumber>=0.11,<1", "pypdfium2>=4.30,<6",
   "Pillow>=11,<13", "jsonschema>=4.23,<5", "python-dotenv>=1,<2",
-  "openai>=2,<3", "langgraph>=1,<2"
+  "openai>=2,<3", "langgraph>=1,<2", "tiktoken>=0.11,<1"
 ]
 
 [project.optional-dependencies]

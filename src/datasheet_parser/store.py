@@ -3,7 +3,9 @@
 from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
+from threading import RLock
 from typing import Protocol
+from uuid import uuid4
 
 import gridfs
 from pymongo import MongoClient, ReplaceOne
@@ -102,36 +104,58 @@ class MemoryStore:
     def __init__(self):
         self.records: dict[str, dict] = {}
         self.blobs: dict[str, bytes] = {}
+        self._lock = RLock()
 
     def put(self, collection, record):
-        self.records.setdefault(collection, {})[record["id"]] = deepcopy(record)
+        with self._lock:
+            self.records.setdefault(collection, {})[record["id"]] = deepcopy(record)
 
     def put_many(self, collection, records):
-        for record in records:
-            self.put(collection, record)
+        with self._lock:
+            for record in records:
+                self.put(collection, record)
 
     def get(self, collection, identifier):
-        return deepcopy(self.records[collection][identifier])
+        with self._lock:
+            return deepcopy(self.records[collection][identifier])
 
     def find(self, collection, query=None):
-        return [
-            deepcopy(r)
-            for r in self.records.get(collection, {}).values()
-            if all(r.get(k) == v for k, v in (query or {}).items())
-        ]
+        with self._lock:
+            return [
+                deepcopy(r)
+                for r in self.records.get(collection, {}).values()
+                if all(r.get(k) == v for k, v in (query or {}).items())
+            ]
 
     def artifact(self, data, media_type, name):
         identifier = artifact_id(data)
-        self.blobs[identifier] = data
+        with self._lock:
+            self.blobs[identifier] = data
         return identifier
 
     def read_artifact(self, identifier):
-        return self.blobs[identifier]
+        with self._lock:
+            return self.blobs[identifier]
 
 
 def materialize(store: Store, identifier: str, cache: Path, suffix: str) -> Path:
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / f"{identifier}{suffix}"
     if not path.exists() or artifact_id(path.read_bytes()) != identifier:
-        path.write_bytes(store.read_artifact(identifier))
+        data = store.read_artifact(identifier)
+        if artifact_id(data) != identifier:
+            raise ValueError("Artifact checksum mismatch")
+        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        try:
+            temporary.write_bytes(data)
+            # Readers see either the previous complete artifact or the new complete bytes.
+            try:
+                temporary.replace(path)
+            except (FileExistsError, PermissionError):
+                # Windows can deny replacing a winner while another thread verifies it.
+                # Accept that race only after independently checking the published content.
+                if not path.exists() or artifact_id(path.read_bytes()) != identifier:
+                    raise
+        finally:
+            temporary.unlink(missing_ok=True)
     return path

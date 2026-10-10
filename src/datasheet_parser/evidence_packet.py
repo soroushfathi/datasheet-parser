@@ -59,7 +59,35 @@ class EvidencePacket:
         return visit(response)
 
 
-def build_packet(store, settings, parse_id, chunks, selected, *, broad_text=False, required_regions=()):
+def build_packet(
+    store,
+    settings,
+    parse_id,
+    chunks,
+    selected,
+    *,
+    broad_text=False,
+    required_regions=(),
+    budget=None,
+    priority=None,
+    required_ids=(),
+    role="extract",
+):
+    if budget is not None:
+        from .bounded_packet import build_bounded_packet
+
+        return build_bounded_packet(
+            store,
+            settings,
+            parse_id,
+            chunks,
+            selected,
+            budget=budget,
+            priority=priority,
+            required_regions=required_regions,
+            required_ids=required_ids,
+            role=role,
+        )
     chosen = [c for c in chunks if c["id"] in selected]
     if broad_text:
         # A bounded retry widens to canonical document text; unrelated images are not added automatically.

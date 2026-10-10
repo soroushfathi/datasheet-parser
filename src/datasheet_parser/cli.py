@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import time
 from functools import wraps
 from pathlib import Path
 from typing import Annotated
@@ -81,8 +82,8 @@ def context(provider=None, model=None, reasoning=None, pipeline=None, workers=No
             raise ValueError("Pipeline must be legacy or retrieval-v2")
         settings.pipeline = pipeline
     if workers is not None:
-        if workers not in {1, 2}:
-            raise ValueError("Workers must be 1 or 2")
+        if workers not in {1, 2, 3}:
+            raise ValueError("Workers must be 1, 2 or 3")
         settings.workers = workers
     store = MongoStore(settings.mongo_uri, settings.database)
     store.ping()
@@ -213,23 +214,79 @@ def run_document(
     reasoning: str | None = None,
     pipeline: str | None = None,
     workers: int | None = None,
+    benchmark_report: Path | None = None,
 ):
     """PDF to JSON: prepare, discover, select a target, extract and review all 17 sections, then export."""
     if output.resolve() == pdf.resolve() or output.is_dir():
         raise ValueError("Output must be a JSON file path distinct from the source PDF")
+    if benchmark_report and (
+        benchmark_report.is_dir()
+        or benchmark_report.resolve() in {pdf.resolve(), output.resolve()}
+    ):
+        raise ValueError("Benchmark report must be a separate file from the PDF and output JSON")
+    started = time.perf_counter()
     _, store, engine = context(provider, model, reasoning, pipeline, workers)
-    parse_id = ingest_pdf(pdf.resolve(), store, console.print)
+    preparation_started = time.perf_counter()
+    ingestion_reused = True
+
+    def preparation_progress(message):
+        nonlocal ingestion_reused
+        ingestion_reused = False
+        console.print(message)
+
+    parse_id = ingest_pdf(pdf.resolve(), store, preparation_progress)
+    preparation_seconds = time.perf_counter() - preparation_started
     typer.echo(f"parse_id={parse_id}")
+    catalog_started = time.perf_counter()
+    catalog_reused = True
+    discovery_trace = None
     try:
         catalog = store.get("catalogs", parse_id)
     except KeyError:
+        catalog_reused = False
+        previous_events = {e["id"] for e in store.find("events", {"run_id": f"catalog:{parse_id}"})}
         catalog = engine.discover(parse_id).model_dump(mode="json")
-    run_id = engine.create_run(parse_id, choose_target(catalog, target))
+        discovery_trace = summarize_events([
+            e for e in store.find("events", {"run_id": f"catalog:{parse_id}"})
+            if e["id"] not in previous_events
+        ])
+    catalog_seconds = time.perf_counter() - catalog_started
+    selection_started = time.perf_counter()
+    chosen = choose_target(catalog, target)
+    selection_seconds = time.perf_counter() - selection_started if target is None else 0
+    run_id = engine.create_run(parse_id, chosen)
     typer.echo(f"run_id={run_id}")
     console.print(f"Destination: {output.resolve()}")
     console.print(f"If interrupted, resume this run with: datasheet resume {run_id} --output <destination>")
     engine.resume(run_id, review=True)
     write_export(store, engine, run_id, output)
+    if benchmark_report:
+        recorded = store.get("runs", run_id)
+        elapsed = time.perf_counter() - started - selection_seconds
+        report = {
+            "run_id": run_id,
+            "end_to_end_seconds_excluding_human_selection": elapsed,
+            "target_seconds": 1800,
+            "within_30_minutes": elapsed <= 1800,
+            "preparation_seconds": preparation_seconds,
+            "catalog_seconds": catalog_seconds,
+            "selection_wait_seconds": selection_seconds,
+            "includes": "connection, ingest, catalog lookup/discovery, mapping, all inference/retries, export",
+            "ingestion_reused": ingestion_reused,
+            "catalog_reused": catalog_reused,
+            "measurement_scope": "fresh extraction/review; preparation/discovery may be reused as recorded",
+            "versions": {k: recorded.get(k) for k in ["prompt_version", "packet_version", "contract_version", "scheduler_version"]},
+            "workers": recorded["workers"],
+            "provider": recorded["provider"],
+            "live_inference": recorded["provider"] in {"codex", "openai"},
+            "model": recorded["model"],
+            "reasoning": recorded["reasoning"],
+            "trace": summarize_events(store.find("events", {"run_id": run_id})),
+            "discovery_trace": discovery_trace,
+        }
+        benchmark_report.parent.mkdir(parents=True, exist_ok=True)
+        benchmark_report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        console.print(f"Benchmark report: {benchmark_report.resolve()}")
 
 
 @app.command()
@@ -358,7 +415,9 @@ def index_document(parse_id: str):
 
     _, store, engine = context()
     engine.pages(parse_id)
-    manifest, _ = ensure_index(store, parse_id)
+    manifest, _ = ensure_index(
+        store, parse_id, version="structural-9" if engine.settings.optimization == "budget-v1" else "structural-8"
+    )
     typer.echo(json.dumps(manifest, indent=2))
 
 
@@ -494,7 +553,7 @@ def evaluate_command(prediction: Path, gold: Path, output: Path | None = None):
 @app.command()
 @guarded
 def schema(output: Path, section: bool = False):
-    """Write the versioned final schema or strict model-facing section schema."""
+    """Write the final export schema or a complete public section schema."""
     output.parent.mkdir(parents=True, exist_ok=True)
     value = strict_schema(SectionResult) if section else ExtractionResult.model_json_schema()
     output.write_text(json.dumps(value, indent=2), encoding="utf-8")

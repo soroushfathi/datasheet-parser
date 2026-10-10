@@ -1,6 +1,7 @@
 """Resumable evidence workflow. Mongo persists each completed stage independently."""
 
 import json
+import time
 import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime
@@ -245,6 +246,31 @@ class Engine(RetrievalWorkflow):
                 "Choose a supported target; ambiguous target combinations require evidence correction"
             )
         run_id = uuid.uuid4().hex[:16]
+        optimized = self.settings.pipeline == "retrieval-v2" and self.settings.optimization == "budget-v1"
+        versions = (
+            {
+                "scheduler_version": "dag-v1",
+                "packet_version": "budget-v1",
+                "contract_version": "compact-v2",
+            }
+            if optimized else {}
+        )
+        retrieval_config = {
+            "top_k": self.settings.retrieval_top_k,
+            "text_budget": self.settings.packet_text_budget,
+            "embedding_model": self.settings.embedding_model,
+            "reranker_model": self.settings.reranker_model,
+            "local_only": self.settings.retrieval_local_only,
+        }
+        if optimized:
+            retrieval_config.update(
+                packet_version="budget-v1",
+                index_version="structural-9",
+                text_token_budget=self.settings.packet_token_budget,
+                image_token_budget=self.settings.packet_image_token_budget,
+                max_images=self.settings.packet_max_images,
+                request_token_budget=self.settings.request_token_budget,
+            )
         self.store.put(
             "runs",
             {
@@ -257,16 +283,13 @@ class Engine(RetrievalWorkflow):
                 "status": "created",
                 "created_at": now(),
                 "schema_version": "1.0",
-                "prompt_version": "2" if self.settings.pipeline == "retrieval-v2" else "1",
+                "prompt_version": "3" if optimized else (
+                    "2" if self.settings.pipeline == "retrieval-v2" else "1"
+                ),
+                **versions,
                 "pipeline": self.settings.pipeline,
                 "workers": self.settings.workers if self.settings.pipeline == "retrieval-v2" else 1,
-                "retrieval_config": {
-                    "top_k": self.settings.retrieval_top_k,
-                    "text_budget": self.settings.packet_text_budget,
-                    "embedding_model": self.settings.embedding_model,
-                    "reranker_model": self.settings.reranker_model,
-                    "local_only": self.settings.retrieval_local_only,
-                },
+                "retrieval_config": retrieval_config,
                 "review_policy": "independent_then_compare",
             },
         )
@@ -507,6 +530,12 @@ class Engine(RetrievalWorkflow):
         run["status"] = "running"
         self.store.put("runs", run)
         try:
+            if run.get("pipeline") == "retrieval-v2" and run.get("scheduler_version") == "dag-v1":
+                self.map_retrieval(run)
+                self.schedule_stages(run, list(section_ids or range(1, 18)), review)
+                count = len(self.store.find("results", {"run_id": run_id}))
+                run["status"] = "extracted" if count == 17 else "partial"
+                return run
             if run.get("pipeline") == "retrieval-v2" and run.get("workers", 1) > 1:
                 self.map_retrieval(run)
                 self.parallel_sections(run, list(section_ids or range(1, 18)), review)
@@ -561,6 +590,133 @@ class Engine(RetrievalWorkflow):
             run["updated_at"] = now()
             self.store.put("runs", run)
         return run
+
+    def schedule_stages(self, run, section_ids, review):
+        """One bounded pool for independent source reads and their dependent reviews.
+
+        Completed database stages are durable dependencies. A failing wave prevents any new
+        submission, while already-running stages may finish and persist reusable work.
+        """
+        from .scheduler import Stage, stage_order
+
+        workers = run.get("workers", 1)
+        if workers not in {1, 2, 3}:
+            raise ValueError("DAG scheduler supports one to three concurrent requests")
+        section_ids = list(dict.fromkeys(section_ids))
+        if any(sid not in SECTIONS for sid in section_ids):
+            raise ValueError("Unknown section requested")
+        roles = ("extract", "blind", "review") if review else ("extract",)
+        todo = {Stage(sid, role) for sid in section_ids for role in roles}
+        completed = set()
+        collections = {"extract": "results", "blind": "blind_reads", "review": "reviews"}
+        for stage in todo:
+            key = f"{run['id']}:{stage.section_id}" + (":blind" if stage.role == "blind" else "")
+            try:
+                self.store.get(collections[stage.role], key)
+                completed.add(stage)
+            except KeyError:
+                pass
+        todo -= completed
+        reused = len(completed)
+        state = local()
+
+        def execute(stage):
+            if workers == 1:
+                worker = self
+            else:
+                if not hasattr(state, "engine"):
+                    settings = self.settings.model_copy(
+                        deep=True,
+                        update={
+                            "provider": run["provider"],
+                            "model": run["model"],
+                            "reasoning": run["reasoning"],
+                            "workers": workers,
+                        },
+                    )
+                    state.engine = Engine(self.store, make_provider(settings), settings, self.progress)
+                worker = state.engine
+            if stage.role == "extract":
+                return worker.extract_section(run, stage.section_id)
+            if stage.role == "blind":
+                return worker.blind_retrieved(run, stage.section_id)
+            record = self.store.get("results", f"{run['id']}:{stage.section_id}")
+            return worker.review_section(run, stage.section_id, record)
+
+        started = time.monotonic()
+        self.event(
+            run["id"], "schedule:dag-v1", "started", kind="code",
+            workers=workers, section_ids=section_ids, reused_stages=reused,
+        )
+        failure = None
+        secondary_failures = []
+        executed = 0
+        try:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                pending = {}
+                while todo or pending:
+                    ready = sorted(
+                        (
+                            stage for stage in todo
+                            if stage.role != "review" or {
+                                Stage(stage.section_id, "extract"), Stage(stage.section_id, "blind")
+                            } <= completed
+                        ),
+                        key=stage_order,
+                    )
+                    for stage in ready[: workers - len(pending)]:
+                        pending[pool.submit(execute, stage)] = stage
+                        todo.remove(stage)
+                        executed += 1
+                    if not pending:
+                        if todo:
+                            raise RuntimeError("Stage dependencies cannot be satisfied")
+                        break
+                    finished, _ = wait(pending, return_when=FIRST_COMPLETED)
+                    # Inspect every outcome in this wave before scheduling any replacement.
+                    for future in finished:
+                        stage = pending.pop(future)
+                        try:
+                            future.result()
+                            completed.add(stage)
+                        except Exception as error:  # noqa: BLE001 -- persist/drain any model-stage failure
+                            if failure is None:
+                                failure = error
+                            else:
+                                secondary_failures.append({
+                                    "stage": f"{stage.role}:{stage.section_id}",
+                                    "error_type": type(error).__name__,
+                                })
+                    if failure:
+                        # No submission after failure. The executor waits for the bounded in-flight set.
+                        for future, stage in list(pending.items()):
+                            try:
+                                future.result()
+                                completed.add(stage)
+                            except Exception as error:  # noqa: BLE001 -- all in-flight work must be drained
+                                secondary_failures.append({
+                                    "stage": f"{stage.role}:{stage.section_id}",
+                                    "error_type": type(error).__name__,
+                                })
+                        break
+            if failure:
+                raise failure
+        except Exception:
+            self.event(
+                run["id"], "schedule:dag-v1", "failed", kind="code",
+                workers=workers, executed_stages=executed, reused_stages=reused,
+                secondary_failures=secondary_failures,
+                telemetry={"elapsed_seconds": time.monotonic() - started},
+            )
+            raise
+        else:
+            self.event(
+                run["id"], "schedule:dag-v1", "completed", kind="code",
+                workers=workers, executed_stages=executed, reused_stages=reused,
+                telemetry={"elapsed_seconds": time.monotonic() - started},
+            )
+        finally:
+            run["scheduler_elapsed_seconds"] = time.monotonic() - started
 
     def parallel_sections(self, run, section_ids, review):
         """Separate providers/checkpoints per worker. Fail fast; allow in-flight sections to finish."""
@@ -653,6 +809,10 @@ class Engine(RetrievalWorkflow):
                 "human_notes": self.store.find("human_notes", {"run_id": run_id}),
                 "pipeline": run.get("pipeline", "legacy"),
                 "retrieval_config": run.get("retrieval_config"),
+                "scheduler_version": run.get("scheduler_version", "section-v1"),
+                "packet_version": run.get("packet_version", "exact-v1"),
+                "contract_version": run.get("contract_version", "exact-v1"),
+                "workers": run.get("workers", 1),
             },
         )
         self.store.put("runs", {**run, "status": result.status})

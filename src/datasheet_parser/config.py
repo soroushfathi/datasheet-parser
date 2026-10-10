@@ -24,7 +24,12 @@ class Settings(BaseModel):
     embedding_model: str | None = None
     reranker_model: str | None = None
     retrieval_local_only: bool = True
-    workers: int = Field(default=1, ge=1, le=2)
+    workers: int = Field(default=2, ge=1, le=3)
+    optimization: Literal["budget-v1", "baseline"] = "budget-v1"
+    packet_token_budget: int = Field(default=6000, ge=1000)
+    packet_image_token_budget: int = Field(default=6000, ge=1000)
+    packet_max_images: int = Field(default=6, ge=1, le=30)
+    request_token_budget: int = Field(default=20000, ge=4000)
 
     @classmethod
     def load(cls):
@@ -46,7 +51,12 @@ class Settings(BaseModel):
             embedding_model=os.getenv("DATASHEET_EMBEDDING_MODEL") or None,
             reranker_model=os.getenv("DATASHEET_RERANKER_MODEL") or None,
             retrieval_local_only=os.getenv("DATASHEET_RETRIEVAL_LOCAL_ONLY", "true").lower() != "false",
-            workers=int(os.getenv("DATASHEET_WORKERS", "1")),
+            workers=int(os.getenv("DATASHEET_WORKERS", "2")),
+            optimization=os.getenv("DATASHEET_OPTIMIZATION", "budget-v1"),
+            packet_token_budget=int(os.getenv("DATASHEET_PACKET_TOKEN_BUDGET", "6000")),
+            packet_image_token_budget=int(os.getenv("DATASHEET_PACKET_IMAGE_TOKEN_BUDGET", "6000")),
+            packet_max_images=int(os.getenv("DATASHEET_PACKET_MAX_IMAGES", "6")),
+            request_token_budget=int(os.getenv("DATASHEET_REQUEST_TOKEN_BUDGET", "20000")),
         )
 
 

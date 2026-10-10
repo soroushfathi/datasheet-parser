@@ -205,7 +205,9 @@ class CompactProvider:
 def engine(tmp_path, provider):
     store = source()
     store.put("catalogs", {"id": "parse", "targets": [TARGET], "ambiguities": []})
-    settings = Settings(mongo_uri="unused", work_dir=tmp_path, retrieval_top_k=1)
+    settings = Settings(
+        mongo_uri="unused", work_dir=tmp_path, retrieval_top_k=1, optimization="baseline", workers=1
+    )
     return Engine(store, provider, settings), store
 
 

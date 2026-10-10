@@ -3,7 +3,11 @@ from collections import Counter
 
 def summarize_events(events: list[dict]) -> dict:
     counts = Counter(e["status"] for e in events)
-    completed = [e for e in events if e["status"] == "completed" and e.get("kind", "llm") == "llm"]
+    completed = [
+        e for e in events
+        if e["status"] == "completed" and e.get("kind", "llm") == "llm"
+        and not e.get("telemetry", {}).get("recovered")
+    ]
     totals = Counter()
     elapsed = 0.0
     measured = 0
@@ -35,7 +39,10 @@ def summarize_events(events: list[dict]) -> dict:
                 "stage": e["stage"],
                 "status": e["status"],
                 "elapsed_seconds": e.get("telemetry", {}).get("elapsed_seconds"),
-                "input": e.get("request_metrics") or e.get("telemetry", {}).get("request_metrics"),
+                "input": {
+                    **(e.get("request_metrics") or {}),
+                    **(e.get("telemetry", {}).get("request_metrics") or {}),
+                },
                 "usage": e.get("telemetry", {}).get("usage"),
                 "attempts": e.get("telemetry", {}).get("attempts"),
             }

@@ -12,12 +12,22 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from threading import Lock
 from typing import Protocol
 
 from jsonschema import Draft202012Validator
 from pydantic import BaseModel
 
 from .config import Settings, resolve_codex_executable
+from .token_budget import request_input_metrics
+
+_FOLDER_LOCKS = {}
+_FOLDER_LOCKS_GUARD = Lock()
+
+
+def _folder_lock(path):
+    with _FOLDER_LOCKS_GUARD:
+        return _FOLDER_LOCKS.setdefault(str(path.resolve()), Lock())
 
 
 class PendingResponse(RuntimeError):
@@ -110,8 +120,14 @@ class RecordedProvider:
         self.root = settings.work_dir / "llm"
 
     def generate(self, request: LLMRequest) -> dict:
-        self.last_record = {}
         key = request.fingerprint(self.settings.model, self.settings.reasoning)
+        # Provider instances are per worker; identical fingerprints still share files.
+        # Serialize those writes without treating log reuse as inference caching.
+        with _folder_lock(self.root / self.name / key):
+            return self._generate(request, key)
+
+    def _generate(self, request: LLMRequest, key: str) -> dict:
+        self.last_record = {}
         folder = self.root / self.name / key
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "prompt.txt").write_text(request.prompt, encoding="utf-8")
@@ -155,11 +171,24 @@ class RecordedProvider:
             except OSError:
                 dimensions.append({"width": None, "height": None})
         request_metrics["image_dimensions"] = dimensions
+        request_metrics.update(request_input_metrics(request.prompt, request.schema, images))
         request_metrics["output_budget_enforcement"] = (
             "api_total_limit" if self.name == "openai" else "prompt_hint"
         )
         (folder / "input_metrics.json").write_text(json.dumps(request_metrics), encoding="utf-8")
+        execute_started = False
         try:
+            budget = request_metrics.get("request_token_budget")
+            if budget and request_metrics["input_tokens_estimate"] > budget:
+                raise ProviderError(
+                    f"{request.task}: estimated serialized request exceeds {budget}-token budget; "
+                    f"inspect {folder / 'input_metrics.json'} before creating a larger-budget run.",
+                    code="request_budget_exceeded",
+                )
+            # Attempts belong to this invocation; a previous fingerprint-folder failure/success
+            # must not be counted as a retry when this request stops before inference.
+            (folder / "attempts.json").unlink(missing_ok=True)
+            execute_started = True
             response, telemetry = self.execute(request, folder, images)
             Draft202012Validator(request.schema).validate(response)
             (folder / "response.json").write_text(
@@ -192,7 +221,7 @@ class RecordedProvider:
                 "code": getattr(error, "code", "provider_error"),
                 "request_metrics": request_metrics,
                 "attempts": json.loads((folder / "attempts.json").read_text())
-                if (folder / "attempts.json").exists()
+                if execute_started and (folder / "attempts.json").exists()
                 else [],
             }
             (folder / "failure.json").write_text(
