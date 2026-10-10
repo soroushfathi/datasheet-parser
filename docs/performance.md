@@ -133,9 +133,67 @@ human review, so no overall extraction-accuracy percentage is certified by this 
 
 ## Current benchmark result
 
-The optimized live benchmark is recorded separately from historical results. Until a
-completed report is available, the 30-minute target remains unverified. Network/routing
-timeouts, service throttling, large mandatory tables or additional variants can exceed it.
+The fresh, uninterrupted MAX3232CD / SOIC-16 (D) run `f7163195249d4fde` completed on
+2026-10-10 in **16 minutes 46 seconds** (1005.87 seconds). It used Codex CLI with
+`gpt-6.1-sol`, `medium` reasoning and three workers. All 17 sections, 51 findings and
+17 independent reviews were exported: 17 extraction + 17 blind + 17 review calls,
+with no failed calls, scheduling failures or expanded reads. Source commit: `842e1b4`.
+
+PDF ingestion and target discovery were reused. The timing covers the command handler's
+connection, cached preparation/catalog lookup, mapping, fresh extraction/review, validation
+and export, excluding human selection. It is a warm-document result, not a measured cold
+PDF-plus-discovery result or a guarantee for other documents/network conditions.
+
+| Metric | Historical run | Fresh optimized run |
+|---|---:|---:|
+| Observed wall time | 104m41s, including interruption/recovery | 16m46s, uninterrupted |
+| Workers | 1 | 3 |
+| Successful model calls | 55, including 4 expanded reads | 51 |
+| Sum of successful request durations | 86.12 min | 47.26 min |
+| Reported input tokens | 1,944,394 | 1,107,202 |
+| Reported output tokens | 179,823 | 106,345 |
+| Total input + output | 2,124,217 | 1,213,547 |
+
+Reported total tokens fell by **42.87%**; input by 43.06% and output by 40.86%.
+The baseline differed in concurrency, expanded calls and interruptions, so these are
+observed run totals, not a controlled causal speedup or proof of preserved accuracy.
+The optimized run reports 47,360 cached input and 13,386 reasoning output tokens,
+already included in their parent totals. No direct API calls or API dollar cost were used.
+This accounting covers pipeline requests, not the coding conversation or other account use.
+
+The largest complete request estimate was 19,696 tokens against the unchanged 20,000
+estimate cap. Actual Codex-reported usage is larger than these local estimates; image
+proxies/tokenizer estimates must not be treated as billed tokens or exact model context use.
+The earlier integration run took 32m42s from run creation to export, including three
+preflight stops and development fixes. It is not the primary timing result.
+
+The result remains **`needs_review`** with 107 issue records (possibly overlapping, not
+107 independently wrong facts). Candidate-reference status agreement is 32/51 and
+answerable-requirement coverage is 29/36. Neither is an overall accuracy percentage.
+Exact claim F1 and unaligned netlist scores are lexical/identifier comparisons, not semantic
+grading; the reference still needs human review.
+
+Read-only spot checks against primary source confirm all 16 pin names/pad numbers,
+the 13 component/power terminal connections of the ground-return circuit, absolute/ESD
+values and the selected D-package drawing values. Known limitations remain:
+
+- Section 4's original packet omits receiver specifications. Blind/review find them, but
+  review reports issues rather than replacing the original facts; `present` can still be
+  premature for a partially complete requirement.
+- Four absolute voltage claims omit the global GND condition; review flags the omission.
+- Some drawing bounds remain expressions instead of numeric limits. The generic bounds
+  validator also flags the literal negative driver VOL columns despite faithful transcription.
+- The C3-to-VCC alternative remains prose rather than a second circuit graph. The generated
+  bypass-capacitor reference is incorrectly labeled as a source reference.
+
+Tracked, reproducible artifacts:
+
+- [Benchmark summary](../benchmarks/max3232-budget-v1.json)
+- [Full exported JSON with source evidence](../benchmarks/max3232-budget-v1-output.json)
+- [Raw comparison with the candidate reference](../benchmarks/max3232-budget-v1-evaluation.json)
+
+134 offline tests and Ruff passed. These checks verify workflow/budget/contract behavior,
+not the semantic correctness of every extracted fact.
 
 For a controlled comparison, run the same PDF/target/provider/model/reasoning with a new
 run and `DATASHEET_OPTIMIZATION=baseline`, then another with `budget-v1`. Keep discovery

@@ -1,0 +1,226 @@
+{
+  "claims": {
+    "precision": 0.0038022813688212928,
+    "recall": 0.0070921985815602835,
+    "f1": 0.0049504950495049506,
+    "correct": 1,
+    "predicted": 263,
+    "expected": 141,
+    "false_positive": 262,
+    "false_negative": 140
+  },
+  "sections": {
+    "1": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 5,
+      "expected": 5,
+      "false_positive": 5,
+      "false_negative": 5
+    },
+    "2": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 15,
+      "expected": 4,
+      "false_positive": 15,
+      "false_negative": 4
+    },
+    "3": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 17,
+      "expected": 14,
+      "false_positive": 17,
+      "false_negative": 14
+    },
+    "4": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 11,
+      "expected": 10,
+      "false_positive": 11,
+      "false_negative": 10
+    },
+    "5": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 15,
+      "expected": 9,
+      "false_positive": 15,
+      "false_negative": 9
+    },
+    "6": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 9,
+      "expected": 2,
+      "false_positive": 9,
+      "false_negative": 2
+    },
+    "7": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 27,
+      "expected": 17,
+      "false_positive": 27,
+      "false_negative": 17
+    },
+    "8": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 3,
+      "expected": 3,
+      "false_positive": 3,
+      "false_negative": 3
+    },
+    "9": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 27,
+      "expected": 17,
+      "false_positive": 27,
+      "false_negative": 17
+    },
+    "10": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 36,
+      "expected": 7,
+      "false_positive": 36,
+      "false_negative": 7
+    },
+    "11": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 7,
+      "expected": 6,
+      "false_positive": 7,
+      "false_negative": 6
+    },
+    "12": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 14,
+      "expected": 11,
+      "false_positive": 14,
+      "false_negative": 11
+    },
+    "13": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 7,
+      "expected": 4,
+      "false_positive": 7,
+      "false_negative": 4
+    },
+    "14": {
+      "precision": 0.045454545454545456,
+      "recall": 0.1111111111111111,
+      "f1": 0.06451612903225806,
+      "correct": 1,
+      "predicted": 22,
+      "expected": 9,
+      "false_positive": 21,
+      "false_negative": 8
+    },
+    "15": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 30,
+      "expected": 16,
+      "false_positive": 30,
+      "false_negative": 16
+    },
+    "16": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 10,
+      "expected": 7,
+      "false_positive": 10,
+      "false_negative": 7
+    },
+    "17": {
+      "precision": 0.0,
+      "recall": null,
+      "f1": 0.0,
+      "correct": 0,
+      "predicted": 8,
+      "expected": 0,
+      "false_positive": 8,
+      "false_negative": 0
+    }
+  },
+  "pin_mapping": {
+    "precision": 0.75,
+    "recall": 0.75,
+    "f1": 0.75,
+    "correct": 12,
+    "predicted": 16,
+    "expected": 16,
+    "false_positive": 4,
+    "false_negative": 4
+  },
+  "net_connections": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "correct": 0,
+    "predicted": 13,
+    "expected": 75,
+    "false_positive": 13,
+    "false_negative": 75
+  },
+  "component_values_and_terminals": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "correct": 0,
+    "predicted": 6,
+    "expected": 36,
+    "false_positive": 6,
+    "false_negative": 36
+  },
+  "requirements": {
+    "disposition_matches": 32,
+    "reference_count": 51,
+    "answerable_coverage": 0.8055555555555556,
+    "unnecessary_abstentions": 7,
+    "predicted_abstentions": 22
+  },
+  "limitations": [
+    "Text parameter names use normalized exact matching, not semantic grading.",
+    "Generated component identifiers must be aligned with the reference before netlist scoring.",
+    "Evidence entailment and completeness of reference require human review."
+  ]
+}

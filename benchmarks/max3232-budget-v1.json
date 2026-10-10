@@ -1,0 +1,244 @@
+{
+  "schema_version": "benchmark-v1",
+  "source_commit": "842e1b4",
+  "run_id": "f7163195249d4fde",
+  "target": {
+    "part_number": "MAX3232C",
+    "ordering_code": "MAX3232CD",
+    "package_name": "16-pin SOIC",
+    "package_code": "D",
+    "temperature_grade": "C: 0°C to 70°C"
+  },
+  "execution": {
+    "provider": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning": "medium",
+    "workers": 3,
+    "versions": {
+      "prompt_version": "3",
+      "scheduler_version": "dag-v1",
+      "packet_version": "budget-v1",
+      "contract_version": "compact-v2"
+    }
+  },
+  "timing": {
+    "pdf_to_json_seconds_excluding_human_selection": 1005.8697120000143,
+    "within_30_minutes": true,
+    "preparation_seconds": 0.027038800064474344,
+    "catalog_seconds": 0.05792060005478561,
+    "ingestion_reused": true,
+    "catalog_reused": true,
+    "scope": "connection, ingest, catalog lookup/discovery, mapping, all inference/retries, export",
+    "aggregate_successful_provider_request_seconds": 2835.55421580025,
+    "by_role": {
+      "extract": {
+        "successful_calls": 17,
+        "request_seconds": 1140.3181888001272,
+        "input_tokens": 352652,
+        "output_tokens": 46909,
+        "average_request_seconds": 67.07754051765454
+      },
+      "blind": {
+        "successful_calls": 17,
+        "request_seconds": 1175.469980899943,
+        "input_tokens": 343971,
+        "output_tokens": 47919,
+        "average_request_seconds": 69.1452929941143
+      },
+      "review": {
+        "successful_calls": 17,
+        "request_seconds": 519.7660461001797,
+        "input_tokens": 410579,
+        "output_tokens": 11517,
+        "average_request_seconds": 30.574473300010567
+      }
+    }
+  },
+  "calls": {
+    "unique_successful_completed": 51,
+    "by_role": {
+      "extract": 17,
+      "blind": 17,
+      "review": 17
+    },
+    "llm_failure_events": 0,
+    "scheduler_failure_events": 0
+  },
+  "reported_token_usage": {
+    "input_tokens": 1107202,
+    "cached_input_tokens": 47360,
+    "output_tokens": 106345,
+    "reasoning_output_tokens": 13386,
+    "total_input_plus_output_tokens": 1213547,
+    "successful_calls_with_reported_usage": 51,
+    "successful_calls_with_unknown_usage": 0,
+    "calls_reporting_each_token_field": {
+      "input_tokens": 51,
+      "cached_input_tokens": 51,
+      "output_tokens": 51,
+      "reasoning_output_tokens": 51
+    },
+    "scope": "Unique successful completed requests in this run. Failed/unreported usage is unknown.",
+    "subset_rule": "Cached input is part of input; reasoning output is part of output. Never add twice.",
+    "api_dollar_cost": null
+  },
+  "request_input_estimates": {
+    "stats": {
+      "input_tokens_estimate": {
+        "sum": 490556,
+        "minimum": 3402,
+        "maximum": 19696,
+        "median": 8741,
+        "samples": 51
+      },
+      "source_text_tokens_estimate": {
+        "sum": 161774,
+        "minimum": 549,
+        "maximum": 6695,
+        "median": 2863,
+        "samples": 51
+      },
+      "request_text_tokens_estimate": {
+        "sum": 303131,
+        "minimum": 2297,
+        "maximum": 13661,
+        "median": 5719,
+        "samples": 51
+      },
+      "image_tokens_estimate": {
+        "sum": 187425,
+        "minimum": 1105,
+        "maximum": 6290,
+        "median": 3315,
+        "samples": 51
+      },
+      "image_count": {
+        "sum": 189,
+        "minimum": 1,
+        "maximum": 7,
+        "median": 3,
+        "samples": 51
+      },
+      "output_budget": {
+        "sum": 197060,
+        "minimum": 1800,
+        "maximum": 9000,
+        "median": 3500,
+        "samples": 51
+      }
+    },
+    "configured_retrieval_budgets": {
+      "top_k": 6,
+      "text_budget": 60000,
+      "embedding_model": null,
+      "reranker_model": null,
+      "local_only": true,
+      "packet_version": "budget-v1",
+      "index_version": "structural-9",
+      "text_token_budget": 6000,
+      "image_token_budget": 6000,
+      "max_images": 6,
+      "request_token_budget": 20000
+    },
+    "effective_packet_limits_by_role": {
+      "extract": {
+        "text_tokens": {
+          "minimum": 6000,
+          "maximum": 9000
+        },
+        "image_tokens": {
+          "minimum": 6000,
+          "maximum": 9000
+        },
+        "max_images": {
+          "minimum": 4,
+          "maximum": 6
+        },
+        "total_tokens": {
+          "minimum": 16387,
+          "maximum": 16921
+        }
+      },
+      "blind": {
+        "text_tokens": {
+          "minimum": 6000,
+          "maximum": 9000
+        },
+        "image_tokens": {
+          "minimum": 6000,
+          "maximum": 9000
+        },
+        "max_images": {
+          "minimum": 4,
+          "maximum": 6
+        },
+        "total_tokens": {
+          "minimum": 16387,
+          "maximum": 16921
+        }
+      },
+      "review": {
+        "text_tokens": {
+          "minimum": 9000,
+          "maximum": 13500
+        },
+        "image_tokens": {
+          "minimum": 6000,
+          "maximum": 9000
+        },
+        "max_images": {
+          "minimum": 8,
+          "maximum": 12
+        },
+        "total_tokens": {
+          "minimum": 9563,
+          "maximum": 16691
+        }
+      }
+    },
+    "role_budget_note": "Base packet limits scale by section complexity; review has a predefined image allowance for the union of citations from both readers. Total source budget reserves schema/instructions/drafts within the full estimated request cap.",
+    "image_attachments_are_repeated_not_unique": true,
+    "image_estimates_are_budget_proxies_not_provider_billing": true,
+    "codex_output_target_is_a_prompt_hint": true
+  },
+  "previous_run_comparison": {
+    "baseline_run_id": "ce40e4a85acc4eb5",
+    "baseline_successful_calls": 55,
+    "baseline_historical_expanded_calls": 4,
+    "baseline_input_tokens": 1944394,
+    "baseline_output_tokens": 179823,
+    "baseline_aggregate_request_seconds": 5166.99,
+    "input_token_reduction_percent": 43.05670558539062,
+    "output_token_reduction_percent": 40.861291380969064,
+    "aggregate_request_seconds_reduction_percent": 45.121739817567864,
+    "scope_note": "Same selected target; baseline was one worker and contained four historical expanded calls. These are observed totals for two runs, not a controlled model-quality or latency benchmark."
+  },
+  "quality": {
+    "sections": 17,
+    "requirements": 51,
+    "reviewed_sections": 17,
+    "claims": 270,
+    "status": "needs_review",
+    "issue_count": 107,
+    "finding_statuses": {
+      "present": 29,
+      "ambiguous": 22
+    },
+    "accuracy_percent": null,
+    "human_review": "pending",
+    "reference": "candidate MAX3232CD reference; human approval pending",
+    "note": "The MAX3232CD reference is a candidate, not human-approved gold. Runtime and token improvement do not establish semantic accuracy. No accuracy percentage inferred here."
+  },
+  "provenance": {
+    "prediction_filename": "MAX3232CD-budget-v1-stable.json",
+    "prediction_sha256": "3f385cb738e037077bd0144f3dfcc4a4fb0020a16cc9a8ac32669b26bc37260d",
+    "source": "Read-only Mongo run, events, saved results/reviews plus exported prediction. No model inference."
+  },
+  "limitations": [
+    "This is one fresh extraction/review run with prepared PDF and catalog reuse explicitly recorded.",
+    "Measured runtime includes connection, preparation lookup, mapping, inference/retries and export; human selection is excluded.",
+    "Baseline used one worker and included four historical expanded calls; reductions are observed run totals, not a controlled quality benchmark.",
+    "Token consumption and speed do not establish extraction accuracy. No API dollar invoice was measured through Codex CLI.",
+    "Cached input and reasoning output are subsets, not additional tokens. Unreported usage stays unknown."
+  ]
+}
