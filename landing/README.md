@@ -28,6 +28,11 @@ under `/opt/datasheet-landing`; it has no Mongo connection, API keys or reposito
 
 Live case study: http://185.243.48.232:8094
 
+The new [live PDF sample](http://185.243.48.232:8095) runs separately on port 8095.
+It selects the first catalog entry and displays extraction/blind/review progress.
+Its frontend is `demo.html`, `demo.css`, `demo.js`; the backend is **not** part of the
+static landing server. See [`../docs/web-demo.md`](../docs/web-demo.md) for details.
+
 The service runs as `nobody`, with `MemoryMax=64M` and `CPUQuota=10%`. Its unit and
 stdlib-only static server are in `deploy/`. Publish only `index.html`, `styles.css`,
 `app.js`, `assets/` and `reports/` into the release directory. Keep `deploy/` outside

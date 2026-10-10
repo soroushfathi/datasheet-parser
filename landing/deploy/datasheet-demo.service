@@ -1,0 +1,28 @@
+[Unit]
+Description=Datasheet Parser live PDF sample
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=datasheet-demo
+Group=datasheet-demo
+WorkingDirectory=/opt/datasheet-demo
+EnvironmentFile=/etc/datasheet-demo.env
+ExecStart=/opt/datasheet-demo/.venv/bin/python -m uvicorn datasheet_parser.web_demo:create_app --factory --host 0.0.0.0 --port 8095 --workers 1 --no-access-log
+Restart=on-failure
+RestartSec=5
+CPUQuota=100%
+MemoryMax=2G
+TasksMax=64
+LimitNOFILE=1024
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/datasheet-demo
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

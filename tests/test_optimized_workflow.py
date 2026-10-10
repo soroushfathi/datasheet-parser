@@ -116,8 +116,12 @@ class FixtureProvider(RecordedProvider):
             assert "EXTRACT_ONLY_VALUE" not in request.prompt
         if role == "review":
             original = json.loads(request.prompt.split("ORIGINAL: ", 1)[1].split("\nINDEPENDENT: ", 1)[0])
+            claims = original.get("claims", [])
+            if "claim_tables" in original:
+                claims = [dict(zip(table["columns"], row, strict=True))
+                          for table in original["claim_tables"] for row in table["rows"]]
             return {
-                "supported_claim_ids": [claim["id"] for claim in original.get("claims", [])],
+                "supported_claim_ids": [claim["id"] for claim in claims],
                 "issues": [],
                 "reviewed_region_ids": list(aliases),
             }, {"usage": None, "synthetic_fixture": True}
@@ -346,6 +350,39 @@ def test_serialized_review_overflow_fails_before_fake_or_real_inference(tmp_path
     packet = store.get("evidence_packets", f"{run_id}:4:review:0")
     assert packet["metrics"]["mandatory_overflow"]
     assert packet["metrics"]["budget"]["total_tokens"] == 0
+
+
+def test_draft_compaction_fits_existing_cap_without_changing_review_sources(tmp_path):
+    store = source(["Recommended operating conditions\nVCC typical 3.3 V"])
+    parser, provider, run_id = engine(tmp_path, store)
+    run = store.get("runs", run_id)
+    run["retrieval_config"]["request_token_budget"] = 100000
+    parser.map_retrieval(run)
+    record = copy.deepcopy(parser.extract_retrieved(run, 4))
+    parser.blind_retrieved(run, 4)
+    template = record["section"]["claims"][0]
+    record["section"]["claims"] = []
+    for i in range(100):
+        claim = copy.deepcopy(template)
+        claim["id"] = f"4-large-{i}"
+        claim["conditions"].append("Printed fixture qualifier: preserve all units and test conditions. " * 3)
+        record["section"]["claims"].append(claim)
+    parser.review_retrieved(run, 4, record)
+    ordinary = provider.requests[-1]
+    previous = store.get("evidence_packets", f"{run_id}:4:review:0")
+    before = request_input_metrics(ordinary.prompt, ordinary.schema, ordinary.images)["input_tokens_estimate"]
+    del store.records["reviews"][f"{run_id}:4"]
+    run["retrieval_config"]["request_token_budget"] = before - 300
+    parser.review_retrieved(run, 4, record)
+    packed = provider.requests[-1]
+    packet = store.get("evidence_packets", f"{run_id}:4:review:0")
+    actual = request_input_metrics(packed.prompt, packed.schema, packed.images)["input_tokens_estimate"]
+    assert actual <= run["retrieval_config"]["request_token_budget"] < before
+    assert packet["metrics"]["draft_encoding"].startswith("columnar-v1")
+    assert packet["chunk_ids"] == previous["chunk_ids"] and packet["aliases"] == previous["aliases"]
+    assert packed.images == ordinary.images
+    assert set(store.get("reviews", f"{run_id}:4")["supported_claim_ids"]) == {
+        c["id"] for c in record["section"]["claims"]}
 
 
 def test_provider_guard_counts_final_prompt_and_schema_before_execute(tmp_path):

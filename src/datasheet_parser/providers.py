@@ -173,7 +173,7 @@ class RecordedProvider:
         request_metrics["image_dimensions"] = dimensions
         request_metrics.update(request_input_metrics(request.prompt, request.schema, images))
         request_metrics["output_budget_enforcement"] = (
-            "api_total_limit" if self.name == "openai" else "prompt_hint"
+            "api_total_limit" if self.name in {"openai", "openai-chat"} else "prompt_hint"
         )
         (folder / "input_metrics.json").write_text(json.dumps(request_metrics), encoding="utf-8")
         execute_started = False
@@ -411,6 +411,82 @@ class OpenAIProvider(RecordedProvider):
         }
 
 
+class OpenAIChatProvider(RecordedProvider):
+    """Explicit Chat Completions transport for OpenAI-compatible gateways.
+
+    OPENAI_BASE_URL and OPENAI_API_KEY stay in the server environment. No silent
+    fallback to JSON mode or another model: schema and vision must be supported.
+    """
+
+    name = "openai-chat"
+
+    def execute(self, request, folder, images):
+        from httpx import TransportError
+        from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+
+        if not os.getenv("OPENAI_API_KEY"):
+            raise ProviderError("OPENAI_API_KEY is required for openai-chat")
+        content = [{"type": "text", "text": request.prompt}]
+        for path in images:
+            mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+            content.append({"type": "image_url", "image_url": {
+                "url": f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode(),
+            }})
+        # The section budget describes JSON, while reasoning consumes this API's
+        # same total output allowance. Reserve room without relaxing input bounds.
+        cap = min(32768, (request.output_budget or 16000) + 8192)
+        attempts = []
+        with OpenAI(timeout=self.settings.llm_timeout, max_retries=0) as client:
+            for number in range(1, self.settings.llm_attempts + 1):
+                started = time.monotonic()
+                try:
+                    stream = client.chat.completions.create(
+                        model=self.settings.model,
+                        messages=[{"role": "user", "content": content}],
+                        reasoning_effort=self.settings.reasoning,
+                        response_format={"type": "json_schema", "json_schema": {
+                            "name": "datasheet_result", "strict": True, "schema": request.schema,
+                        }},
+                        max_completion_tokens=cap,
+                        stream=True, stream_options={"include_usage": True},
+                    )
+                    content_parts, finish, usage, refusal = [], None, None, False
+                    response_id, reported_model = None, None
+                    # Some compatible routers append an SSE terminator even to a
+                    # non-streaming JSON response. Use their native SSE transport.
+                    with stream:
+                        for chunk in stream:
+                            response_id, reported_model = chunk.id, chunk.model
+                            if chunk.usage:
+                                usage = chunk.usage.model_dump()
+                            if chunk.choices:
+                                choice = chunk.choices[0]
+                                if choice.delta.content:
+                                    content_parts.append(choice.delta.content)
+                                refusal = refusal or bool(choice.delta.refusal)
+                                finish = choice.finish_reason or finish
+                    if finish != "stop" or refusal or not content_parts:
+                        raise ProviderError("Incomplete or refused structured response", code="incomplete_response")
+                    attempts.append({"attempt": number, "status": "success",
+                                     "elapsed_seconds": time.monotonic() - started})
+                    return json.loads("".join(content_parts)), {
+                        "usage": usage,
+                        "model_reported": reported_model, "response_id": response_id,
+                        "api_output_token_cap": cap, "attempts": attempts,
+                    }
+                except (APIConnectionError, APITimeoutError, APIStatusError, TransportError) as error:
+                    status = getattr(error, "status_code", None)
+                    retryable = status is None or status in {408, 429} or status >= 500
+                    attempts.append({"attempt": number, "status": "failed", "http_status": status,
+                                     "elapsed_seconds": time.monotonic() - started})
+                    if not retryable or number == self.settings.llm_attempts:
+                        raise ProviderError("Gateway request failed", code="gateway_error",
+                                            retryable=retryable) from error
+                    time.sleep(min(2**number, 10))
+                finally:
+                    (folder / "attempts.json").write_text(json.dumps(attempts), encoding="utf-8")
+
+
 class ExternalWorkerProvider(RecordedProvider):
     name = "external"
 
@@ -438,6 +514,7 @@ def make_provider(settings: Settings) -> RecordedProvider:
     types = {
         "codex": CodexProvider,
         "openai": OpenAIProvider,
+        "openai-chat": OpenAIChatProvider,
         "external": ExternalWorkerProvider,
         "replay": ReplayProvider,
     }

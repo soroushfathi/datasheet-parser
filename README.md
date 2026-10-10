@@ -9,8 +9,15 @@ It includes a scrolling CLI replay, architecture roles, scoped comparison result
 recorded token/time usage and future-work accordions. Source and deployment details
 are in [`landing/README.md`](landing/README.md). The page serves static files only.
 
-این پروژه و نتایج گزارش‌شده با **Codex CLI** و ورود حساب **ChatGPT Pro** اجرا شده‌اند؛
-برای آن اجراها کلید OpenAI API استفاده نشده است. برای اجرای پروژه روی سیستم خودتان،
+Live PDF sample: [upload a datasheet](http://185.243.48.232:8095). This separate service
+uses the supplied OpenAI-compatible router (`openai/gpt-5.5`, medium reasoning),
+automatically selects the first discovered model/package entry, shows real progress,
+and offers the complete 17-section JSON. See [web demo setup and deployment](docs/web-demo.md).
+The API key stays on the server; it is never embedded in the page or committed.
+
+اجراهای مرجع و بنچمارک قبلی با **Codex CLI** و ورود حساب **ChatGPT Pro** اجرا شده‌اند؛
+برای آن اجراها کلید OpenAI API استفاده نشده است. صفحهٔ آزمایش زندهٔ جدید از API روتر
+با کلید سمت سرور استفاده می‌کند. برای اجرای پروژه روی سیستم خودتان،
 می‌توانید **Codex CLI** را نصب و وارد حساب خود شوید، یا **OpenAI API Key** را در `.env`
 قرار دهید و provider را `openai` انتخاب کنید. راهنمای هر دو مسیر در
 [بخش LLM providers](#llm-providers) آمده است.
@@ -416,6 +423,7 @@ provider, model and reasoning settings; resuming an existing run keeps its origi
 |---|---|---|
 | `codex` | `codex login`; `DATASHEET_MODEL` | Fresh, read-only Codex process; text + attached PNGs; strict JSON schema |
 | `openai` | `OPENAI_API_KEY` | Responses API with the same source packet and JSON schema |
+| `openai-chat` | `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` | Compatible Chat Completions gateway with vision, strict schema and streaming usage |
 | `external` | No inference credentials | Writes prompt/schema/images; exits with code 3 awaiting `submitted.json` |
 | `replay` | `DATASHEET_REPLAY_SOURCE=codex` | Exact fingerprint lookup; no new inference; for software tests |
 

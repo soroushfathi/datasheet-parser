@@ -184,6 +184,61 @@ def compact_review(section, target_id=None):
     return _without_empty({**data, "claims": claims})
 
 
+def columnar_review(view):
+    """Losslessly remove repeated claim field names from an already compact view.
+
+    Group by the actual nonempty field set; do not pad every row with nulls or
+    shorten facts, numbers, qualifiers, citations or public claim identifiers.
+    """
+    groups = {}
+    for claim in view.get("claims", []):
+        columns = tuple(claim)
+        groups.setdefault(columns, []).append([claim[key] for key in columns])
+    return {
+        **{key: value for key, value in view.items() if key != "claims"},
+        "claim_tables": [{"columns": list(columns), "rows": rows} for columns, rows in groups.items()],
+    }
+
+
+def shared_review_texts(views):
+    """Intern repeated long draft text only when exact token estimates predict savings."""
+    import json
+    from collections import Counter
+
+    from .token_budget import estimate_text_tokens
+
+    counts = Counter()
+
+    def collect(value):
+        if isinstance(value, str) and len(value) >= 80:
+            counts[value] += 1
+        elif isinstance(value, dict):
+            for item in value.values():
+                collect(item)
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+
+    collect(views)
+    pool, reverse = {}, {}
+    for value, count in counts.items():
+        key = f"t{len(pool)}"
+        tokens = lambda item: estimate_text_tokens(json.dumps(item, ensure_ascii=False, separators=(",", ":")))
+        if count >= 2 and count * tokens(value) > tokens({key: value}) + count * tokens({"text_ref": key}) + 10:
+            pool[key], reverse[value] = value, key
+
+    def encode(value):
+        if isinstance(value, str) and value in reverse:
+            return {"text_ref": reverse[value]}
+        if isinstance(value, dict):
+            return {key: encode(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [encode(item) for item in value]
+        return value
+
+    return pool, encode(views)
+
+
 def cited_regions(section):
     """Collect citations from findings, claims, pins, circuits, components and nets."""
     data = section.model_dump(mode="json") if isinstance(section, SectionResult) else section

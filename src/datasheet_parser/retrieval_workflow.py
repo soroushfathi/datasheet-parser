@@ -3,7 +3,15 @@
 import json
 import time
 
-from .contracts import cited_regions, compact_review, expand_section, output_budget, section_contract
+from .contracts import (
+    cited_regions,
+    columnar_review,
+    compact_review,
+    expand_section,
+    output_budget,
+    section_contract,
+    shared_review_texts,
+)
 from .document_index import ensure_index
 from .evidence_packet import build_packet
 from .models import Review, Status
@@ -413,6 +421,50 @@ class RetrievalWorkflow:
                 f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
             )
             exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+            if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
+                # Change only draft serialization, never the evidence selection or cap.
+                # Preserve normal prompts/checkpoints for requests that already fit.
+                original_dump, independent_dump = dumps(packet.encode(original)), dumps(packet.encode(independent))
+                prompt = prompt.replace(
+                    f"ORIGINAL: {original_dump}\n",
+                    f"ORIGINAL: {dumps(columnar_review(packet.encode(original)))}\n", 1,
+                ).replace(
+                    f"INDEPENDENT: {independent_dump}\n",
+                    f"INDEPENDENT: {dumps(columnar_review(packet.encode(independent)))}\n", 1,
+                )
+                prompt += (
+                    "\nDraft encoding: columnar-v1. Each claim_tables item has columns and rows. "
+                    "Read each row as the object obtained by pairing its cells with those column names. "
+                    "Different field sets have separate tables; no facts or qualifiers were removed. "
+                    "Public claim IDs in the id column are unchanged. Return those IDs, not row numbers."
+                )
+                metrics["draft_encoding"] = "columnar-v1"
+                metrics["uncompressed_preflight"] = exact_input
+                serialized = POLICY + prompt + (
+                    f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
+                )
+                exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+                if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
+                    views = [columnar_review(packet.encode(original)), columnar_review(packet.encode(independent))]
+                    pool, packed = shared_review_texts(views)
+                    if pool:
+                        prompt = prompt.replace(
+                            f"ORIGINAL: {dumps(views[0])}\n", f"ORIGINAL: {dumps(packed[0])}\n", 1,
+                        ).replace(
+                            f"INDEPENDENT: {dumps(views[1])}\n", f"INDEPENDENT: {dumps(packed[1])}\n", 1,
+                        )
+                        prompt += (
+                            "\nSHARED_DRAFT_TEXT: " + dumps(pool)
+                            + "\nAny draft value {text_ref:tN} means the exact string at key tN in "
+                            "SHARED_DRAFT_TEXT. Expand it before checking the column/claim. "
+                            "References are serialization only, not evidence or new claim IDs."
+                        )
+                        metrics["draft_encoding"] = "columnar-v1+shared-text-v1"
+                        metrics["draft_text_pool_entries"] = len(pool)
+                        serialized = POLICY + prompt + (
+                            f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
+                        )
+                        exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
             metrics["serialized_preflight"] = exact_input
             metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
             if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:

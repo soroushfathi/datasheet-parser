@@ -184,7 +184,7 @@ class Engine(RetrievalWorkflow):
             raise ValueError("Evidence exceeds configured packet limit; split this document before running")
         return result, images, seen
 
-    def discover(self, parse_id):
+    def discover(self, parse_id, *, separate_ordering_codes=False):
         pages = self.pages(parse_id)
         # Entire document text prevents treating only a cover-page family name as a complete catalog.
         selected = {
@@ -213,13 +213,20 @@ class Engine(RetrievalWorkflow):
             )
         else:
             packet, images, allowed = self.packet(parse_id, selected, full_text=True)
+        ordering_policy = (
+            "Emit one target per explicitly printed orderable SKU, even when several SKUs share "
+            "a base model, package and temperature grade. ordering_code must be ONE literal code, "
+            "never a semicolon/comma/list of codes. Keep each shipping suffix as its own entry; "
+            "do not infer suffixes that are not printed. Preserve ordering-table row order.\n"
+            if separate_ordering_codes else ""
+        )
         prompt = (
             "\nDiscover the valid target model/package/temperature-grade combinations in this PDF. "
             "Do not form a Cartesian product. Exclude alternative products and external components mentioned in passing. "
             "Use ordering tables and footnotes to establish actual combinations. Give each combination a unique short id. "
             "Use null when an ordering suffix or grade is not specified; do not fabricate a SKU. "
             "Keep unsupported combinations out of targets and explain them in ambiguities. Cite exact region IDs.\n"
-            + packet
+            + ordering_policy + packet
         )
         catalog = self.call(f"catalog:{parse_id}", "discover", Catalog, prompt, images)
         if contextual_packet:
@@ -228,6 +235,11 @@ class Engine(RetrievalWorkflow):
         if len(ids) != len(set(ids)):
             raise ValueError("Discovery returned duplicate target IDs")
         for target in catalog.targets:
+            if separate_ordering_codes and target.ordering_code and (
+                any(delimiter in target.ordering_code for delimiter in [";", ",", "\n"])
+                or len(target.ordering_code.split()) > 1
+            ):
+                raise ValueError("Discovery combined several ordering codes; refusing a multi-target sample")
             if not target.evidence_ids or not set(target.evidence_ids) <= allowed:
                 raise ValueError("Discovery target has missing or unknown evidence")
             # Stable across reruns even if the model chooses a different short ID.

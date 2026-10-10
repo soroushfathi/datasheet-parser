@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f7f9">
+  <title>Datasheet Parser · آزمایش زنده</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/demo.css"><script src="/demo.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="http://185.243.48.232:8094" dir="ltr"><span class="brand-mark">⌘</span> Datasheet<span>Parser</span></a><a class="back" href="http://185.243.48.232:8094">معماری و گزارش پروژه ↗</a></header>
+<main>
+  <section class="intro">
+    <div class="eyebrow" dir="ltr"><i></i> LIVE EXTRACTION LAB <span>PDF → EVIDENCE → JSON</span></div>
+    <h1>دیتاشیت را بده.<br><span>مسیر استخراج را ببین.</span></h1>
+    <p>یک PDF آپلود کن؛ گزینه‌های مدل و پکیج را پیدا می‌کنیم و <strong>فقط گزینهٔ اول</strong> را برای تولید خروجی نمونه انتخاب می‌کنیم. تعداد گزینه‌ها و انتخاب دقیق را همین‌جا می‌بینی.</p>
+    <div class="pill-row"><span>۱۷ بخش</span><span>۵۱ نیازمندی</span><span>بازخوانی مستقل</span><span>شواهد قابل ردیابی</span></div>
+  </section>
+  <section class="workspace" aria-label="آزمایش استخراج">
+    <aside class="upload-panel">
+      <div class="panel-label" dir="ltr">01 / SOURCE DOCUMENT</div>
+      <h2>فایل را انتخاب کن</h2>
+      <form id="upload-form">
+        <label class="drop-zone" id="drop-zone" for="pdf-file"><span class="file-icon" aria-hidden="true">↥</span><strong id="file-name">انتخاب یا رهاکردن PDF</strong><span>تا ۲۰ مگابایت · حداکثر ۱۰۰ صفحه</span><input id="pdf-file" name="file" type="file" accept="application/pdf,.pdf" required></label>
+        <button id="submit" type="submit">شروع تولید نمونه <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="hint">پردازش روی سرور انجام می‌شود. بستن صفحه اجرای پذیرفته‌شده را متوقف نمی‌کند؛ با همین لینک می‌توانی برگردی.</p>
+      <p class="hint">متن و تصاویر سند برای استخراج به سرویس مدل زبانی فرستاده می‌شود.</p>
+      <div class="model-info"><span>مدل اجرا</span><code id="model" dir="ltr">در حال اتصال…</code></div>
+      <p id="form-error" class="error" role="alert"></p>
+      <button id="resume" type="button" hidden>ادامهٔ همین اجرا ↗</button>
+      <div id="target-card" class="target-card" hidden aria-live="polite"><span class="panel-label">مدل نمونه انتخاب شد</span><p id="target-notice"></p><strong id="target-name" dir="ltr"></strong><span id="target-package"></span><span id="target-grade"></span></div>
+    </aside>
+    <div class="run-panel">
+      <div class="terminal-head" dir="ltr"><span class="traffic"><i></i><i></i><i></i></span><span>datasheet / live session</span><span id="connection">READY</span></div>
+      <div class="terminal" dir="ltr"><div class="terminal-prompt"><span>❯</span> datasheet extract <span id="command-file">your-datasheet.pdf</span> --first-target</div><div id="log" role="log" aria-live="polite" aria-relevant="additions"><div class="idle-line">Waiting for a source document…</div></div><div id="cursor" class="cursor" hidden>▍</div></div>
+      <div class="run-stats"><div><span>وضعیت</span><strong id="run-status">آمادهٔ شروع</strong></div><div><span>زمان سپری‌شده</span><strong id="elapsed" dir="ltr">00:00</strong></div><div><span>مراحل مدل</span><strong id="completed" dir="ltr">0 / 51</strong></div></div>
+      <div class="progress-track"><progress id="progress" max="51" value="0" aria-label="مراحل کامل‌شده"></progress></div>
+      <div class="section-header"><h2>پیشرفت بخش‌ها</h2><span>استخراج / بازخوانی / بازبینی</span></div>
+      <div id="sections" class="section-grid"></div>
+      <div id="live-output" class="live-output" hidden><h3>خروجی بخش‌ها در طول اجرا</h3><p class="hint">پیش‌نمایش اولیه است؛ وضعیت بازبینی کنار هر بخش مشخص می‌شود.</p><div id="partial-sections"></div></div>
+      <p class="status-note" id="status-note" aria-live="polite">زمان هر درخواست به حجم شواهد و پاسخ مدل بستگی دارد. این صفحه رویدادهای واقعی اجرا را نمایش می‌دهد.</p>
+      <p class="job-id" dir="ltr" id="job-id"></p>
+    </div>
+  </section>
+  <section id="result-panel" class="result-panel" hidden>
+    <div class="result-top"><div><div class="panel-label" dir="ltr">03 / STRUCTURED OUTPUT</div><h2>خروجی نمونه آماده است.</h2><p id="result-summary"></p></div><a id="download" class="download" href="#">دانلود JSON ↓</a></div>
+    <p class="review-note" id="review-note"></p>
+    <div class="result-columns"><div><h3>خلاصهٔ هر بخش</h3><div id="result-sections"></div></div><div><h3>موارد نیازمند بررسی</h3><div id="result-issues"></div></div></div>
+  </section>
+  <footer><span dir="ltr">SOURCE FIRST. EVIDENCE ALWAYS.</span><p>این یک خروجی نمونهٔ خودکار است. بازبینی مدل جای تأیید انسانی اطلاعات مهندسی را نمی‌گیرد.</p></footer>
+</main>
+</body></html>

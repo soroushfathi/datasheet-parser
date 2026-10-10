@@ -289,3 +289,44 @@ def test_output_budget_reflects_role_complexity_and_extra_rows():
         output_budget(18, "extract")
     with pytest.raises(ValueError, match="Unknown section role"):
         output_budget(1, "map")
+
+
+def test_columnar_review_preserves_all_fields_and_reduces_real_token_estimate():
+    from datasheet_parser.contracts import columnar_review
+    from datasheet_parser.token_budget import estimate_text_tokens
+
+    original = {"section_id": 15, "status": "ambiguous", "findings": [{"reason": "source gap"}],
+        "claims": [{"id": f"15-c{i}", "requirement_id": "15.footnotes", "parameter": "note",
+                    "kind": "text", "value": "Keep pin 16 supply within specified limits.",
+                    "conditions": ["TA=25 C"], "evidence_ids": ["e12"], "status": "present"}
+                   for i in range(90)]}
+    original["claims"][5]["quantity"] = {"maximum": 5.5, "unit": "V"}
+    packed = columnar_review(original)
+    restored = {row[table["columns"].index("id")]: dict(zip(table["columns"], row, strict=True))
+                for table in packed["claim_tables"] for row in table["rows"]}
+    assert restored == {c["id"]: c for c in original["claims"]}
+    assert packed["findings"] == original["findings"] and packed["status"] == original["status"]
+    tokens = lambda data: estimate_text_tokens(json.dumps(data, separators=(",", ":")))
+    assert tokens(packed) < tokens(original) * .8
+
+
+def test_shared_draft_text_roundtrips_without_touching_ids_or_citations():
+    from datasheet_parser.contracts import shared_review_texts
+
+    text = "Keep every numeric bound, qualifier, unit, footnote and variant exactly as in the supplied source. " * 4
+    original = [{"claims": [{"id": "15.1", "value": text, "evidence_ids": ["e17"]}]},
+                {"claims": [{"id": "15.2", "value": text, "evidence_ids": ["e19"]}]}]
+    pool, packed = shared_review_texts(original)
+    assert pool and packed[0]["claims"][0]["id"] == "15.1"
+
+    def decode(value):
+        if isinstance(value, dict):
+            if set(value) == {"text_ref"}:
+                return pool[value["text_ref"]]
+            return {k: decode(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [decode(v) for v in value]
+        return value
+
+    assert decode(packed) == original
+    assert isinstance(original[0]["claims"][0]["value"], str)
