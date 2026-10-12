@@ -222,7 +222,12 @@ class Engine(RetrievalWorkflow):
             "Emit one target per explicitly printed orderable SKU, even when several SKUs share "
             "a base model, package and temperature grade. ordering_code must be ONE literal code, "
             "never a semicolon/comma/list of codes. Keep each shipping suffix as its own entry; "
-            "do not infer suffixes that are not printed. Preserve ordering-table row order.\n"
+            "do not infer suffixes that are not printed. Preserve ordering-table row order. "
+            "This is not an SKU-only filter: null ordering_code is valid. When full orderable "
+            "SKUs are absent, retain model/package combinations directly established by the "
+            "source package information or pinouts, with ordering_code=null. Do not construct "
+            "a voltage/package Cartesian product. Retain a source-mentioned candidate as "
+            "ambiguous if its model/package linkage cannot be established.\n"
             if separate_ordering_codes else ""
         )
         prompt = (
@@ -230,6 +235,9 @@ class Engine(RetrievalWorkflow):
             "Do not form a Cartesian product. Exclude alternative products and external components mentioned in passing. "
             "Use ordering tables and footnotes to establish actual combinations. Give each combination a unique short id. "
             "Use null when an ordering suffix or grade is not specified; do not fabricate a SKU. "
+            "A complete ordering code or a SKU-specific temperature grade is NOT required when "
+            "the source explicitly supports the model/package. A general operating temperature "
+            "range is not automatically an ordering grade. "
             "Keep unsupported combinations out of targets and explain them in ambiguities. Cite exact region IDs.\n"
             + ordering_policy + packet
         )

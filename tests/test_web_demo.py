@@ -6,7 +6,7 @@ from PIL import Image
 
 from datasheet_parser.config import Settings
 from datasheet_parser.engine import Engine
-from datasheet_parser.errors import ReviewBudgetError
+from datasheet_parser.errors import NoTargetsError, ReviewBudgetError
 from datasheet_parser.models import Catalog, Target
 from datasheet_parser.providers import LLMRequest, OpenAIChatProvider, ProviderError
 from datasheet_parser.store import MemoryStore
@@ -51,6 +51,77 @@ def test_demo_discovery_rejects_grouped_skus(tmp_path, joined):
     engine.call = call
     with pytest.raises(ValueError, match="combined several ordering codes"):
         engine.discover("parse", separate_ordering_codes=True)
+
+
+@pytest.mark.parametrize("separate_ordering_codes", [False, True])
+def test_discovery_accepts_explicit_package_without_ordering_sku(tmp_path, separate_ordering_codes):
+    settings = Settings(mongo_uri="unused", work_dir=tmp_path, pipeline="legacy")
+    store = MemoryStore()
+    engine = Engine(store, None, settings)
+    engine.pages = lambda parse_id: [{"number": 1, "requires_visual_read": False, "text": "source"}]
+    engine.packet = lambda *args, **kwargs: ("source", [], {"p1"})
+    candidate = target("BASE")
+    candidate.ordering_code = None
+    candidate.temperature_grade = None
+
+    def call(run_id, stage, model, prompt, images):
+        assert "complete ordering code or a SKU-specific temperature grade is NOT required" in prompt
+        if separate_ordering_codes:
+            assert "not an SKU-only filter" in prompt
+            assert "Do not construct a voltage/package Cartesian product" in prompt
+        return Catalog(targets=[candidate], ambiguities=[])
+
+    engine.call = call
+    catalog = engine.discover("parse", separate_ordering_codes=separate_ordering_codes)
+    assert catalog.targets[0].ordering_code is None
+    assert catalog.targets[0].temperature_grade is None
+    assert catalog.targets[0].status == "supported"
+    assert store.get("catalogs", "parse")["targets"][0]["ordering_code"] is None
+
+
+def test_empty_discovery_has_specific_failure_not_validation_error(setup):
+    _store, _settings, jobs = setup
+
+    class Engine:
+        def discover(self, *args, **kwargs):
+            return Catalog(targets=[], ambiguities=["No source-supported candidates"])
+
+        def create_run(self, *args):
+            pytest.fail("Cannot extract without a target")
+
+    identifier = jobs.submit(b"fixture", "x.pdf", 1)
+    jobs.update(identifier, parse_id="parse")
+    jobs.engine_factory = lambda callback: Engine()
+    with pytest.raises(NoTargetsError) as caught:
+        jobs.run(identifier)
+    jobs.fail(identifier, caught.value)
+    public = jobs.snapshot(identifier)
+    assert public["failure_code"] == "no_model_targets"
+    assert public["failure_details"] == {"target_count": 0}
+    assert public["target_count"] == 0
+    assert public["status"] == "failed"
+    assert public["can_resume"]
+
+
+@pytest.mark.parametrize("code, has_parse, resumable", [
+    ("no_model_targets", True, True),
+    ("no_model_targets", False, False),
+    ("validation_error", True, False),
+    ("output_validation_error", True, False),
+])
+def test_discovery_resume_requires_specific_failure_and_saved_parse(setup, code, has_parse, resumable):
+    store, settings, jobs = setup
+    identifier = jobs.submit(b"fixture", "x.pdf", 1)
+    jobs.queue.get_nowait()
+    jobs.update(identifier, status="failed", failure_code=code,
+                parse_id="parse" if has_parse else None)
+    client = TestClient(create_app(store, settings, jobs))
+    assert client.get(f"/api/jobs/{identifier}").json()["can_resume"] is resumable
+    response = client.post(f"/api/jobs/{identifier}/resume")
+    assert response.status_code == (202 if resumable else 409)
+    if resumable:
+        assert store.get("demo_jobs", identifier)["parse_id"] == "parse"
+        assert jobs.queue.get_nowait() == identifier
 
 
 def test_first_target_notice_and_only_one_run(setup):

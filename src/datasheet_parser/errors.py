@@ -27,6 +27,10 @@ class ReviewBudgetError(ValueError):
         super().__init__(f"Review {self.section_id}: estimated input {self.estimate} exceeds limit {self.limit}")
 
 
+class NoTargetsError(ValueError):
+    """Discovery completed, but returned no source-supported model/package candidate."""
+
+
 def safe_stage(stage):
     return stage if isinstance(stage, str) and re.fullmatch(r"[a-z][a-z0-9_-]*(?::[a-z0-9_-]+){0,4}", stage) else None
 
@@ -50,7 +54,10 @@ def failure_diagnostics(error, stage=None):
     network_failure = (any(isinstance(e, (APIConnectionError, APITimeoutError, httpx.TransportError))
                            for e in chain) or
                        bool(provider and provider.code in {"gateway_error", "transport_error", "routing_timeout"}))
-    if budget:
+    if any(isinstance(e, NoTargetsError) for e in chain):
+        code, details = "no_model_targets", {"target_count": 0}
+        stage = stage or "discover"
+    elif budget:
         code = budget.code
         details = {"section_id": budget.section_id, "input_tokens_estimate": budget.estimate,
                    "request_token_budget": budget.limit, "reason": budget.reason}
@@ -92,6 +99,7 @@ def public_failure_message(failure):
     stage = failure.get("stage")
     prefix = f"مرحلهٔ {stage}: " if stage else ""
     messages = {
+        "no_model_targets": "مرحلهٔ شناسایی، هیچ ترکیب مدل و پکیجی برنگرداند؛ این خطای اتصال یا قالب JSON نیست. با ادامهٔ اجرا، شناسایی دوباره انجام می‌شود؛ کد سفارش نامشخص به‌تنهایی مانع انتخاب مدل و پکیج نیست.",
         "request_budget_exceeded": "ورودی درخواست از سقف توکن تنظیم‌شده در برنامه بیشتر است؛ این خطا قبل از تماس با مدل رخ داده است.",
         "storage_error": "ذخیره یا خواندن داده‌ها ناموفق بود؛ اتصال پایگاه داده و فایل‌های سرور باید بررسی شود.",
         "output_validation_error": "پاسخ مدل با قالب یا قواعد اعتبارسنجی خروجی سازگار نبود؛ پاسخ نامعتبر به‌عنوان خروجی نهایی پذیرفته نشد.",

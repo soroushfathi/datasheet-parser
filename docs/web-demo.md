@@ -216,3 +216,30 @@ frozen source, input cap, model and reasoning. Successful checkpoints were reuse
 the original job/output was not overwritten.
 
 [New CY7C64225 output](http://185.243.48.232:8095/?job=4b8a50b34bb54029980a9dc33d8231f8)
+
+## Discovery without a printed ordering SKU (2026-10-12)
+
+Job `e5ad7e509ffc43f4af87d7e535ce03a4` uploaded an 8-page `AMS1117.pdf`.
+Its discovery request succeeded in about 12 seconds, but returned an empty catalog:
+the SKU-preservation instruction was interpreted as requiring complete ordering
+codes and SKU-specific grades. The web service then raised generic `ValueError`
+for zero targets, incorrectly presenting this as a validation failure. It was not
+a timeout, quota failure or malformed JSON response.
+
+Discovery now explicitly allows null ordering codes/grades for model/package
+combinations established by source package information or pinouts. Literal SKUs
+still remain separate, unsupported voltage/package Cartesian products are forbidden,
+and unresolved combinations remain ambiguous. A real discovery-only recheck of
+the same parse returned three supported package candidates: SOT-89-3L, SOT-223-3L
+and TO-252-2L, with null ordering codes. Output-voltage/package linkage and unreadable
+package codes remain unresolved. This test does not certify the final 17-section
+extraction, which was not automatically rerun.
+
+An empty catalog now has the specific safe failure code `no_model_targets`.
+Only that pre-run failure with a complete saved parse can be explicitly resumed
+through the page to rediscover targets. Other pre-run validation failures remain
+non-resumable. The original failed catalog is privately archived; no SKU or grade
+is fabricated to bypass validation.
+The fix passed 481 offline tests and Ruff. Browser verification confirmed that
+the affected job displays the specific message and an enabled Continue button;
+the button was not pressed during the discovery-only verification.

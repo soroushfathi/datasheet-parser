@@ -21,7 +21,7 @@ from starlette.formparsers import MultiPartException
 
 from .config import Settings
 from .engine import Engine
-from .errors import failure_diagnostics, public_failure_message
+from .errors import NoTargetsError, failure_diagnostics, public_failure_message
 from .ingestion import ingest
 from .providers import make_provider
 from .requirements import SECTIONS
@@ -101,6 +101,9 @@ class DemoJobs:
 
     @staticmethod
     def can_resume(job):
+        if (job["status"] == "failed" and not job.get("run_id")
+                and job.get("parse_id") and job.get("failure_code") == "no_model_targets"):
+            return True
         code = (job.get("target") or {}).get("ordering_code") or ""
         return (job["status"] == "failed" and bool(job.get("run_id"))
                 and not any(c in code for c in [";", ",", "\n"]) and len(code.split()) <= 1)
@@ -210,7 +213,7 @@ class DemoJobs:
             catalog = engine.discover(parse_id, separate_ordering_codes=True)
             if not catalog.targets:
                 self.update(identifier, target_count=0)
-                raise ValueError("No targets")
+                raise NoTargetsError("No source-supported model/package targets")
             # The first entry really is first: never silently choose the second
             # entry when the first is ambiguous or create outputs for all variants.
             target = catalog.targets[0]
