@@ -4,10 +4,12 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
+from time import monotonic, sleep
 from typing import Protocol
 from uuid import uuid4
 
 import gridfs
+from gridfs.errors import FileExists
 from pymongo import MongoClient, ReplaceOne
 from pymongo.errors import DuplicateKeyError
 
@@ -86,9 +88,18 @@ class MongoStore:
         if not self.fs.exists(identifier):
             try:
                 self.fs.put(data, _id=identifier, filename=name, contentType=media_type)
-            except DuplicateKeyError:
-                if not self.fs.exists(identifier):
-                    raise
+            except (DuplicateKeyError, FileExists):
+                # GridFS inserts chunks before its files metadata. A competing upload
+                # can therefore collide while the completed file is not visible yet.
+                deadline = monotonic() + 5.0
+                while not self.fs.exists(identifier):
+                    if monotonic() >= deadline:
+                        raise
+                    sleep(0.05)
+                # A duplicate key alone does not prove that the winner is intact.
+                # Never accept orphaned/corrupt chunks or a mismatched stored artifact.
+                if self.read_artifact(identifier) != data:
+                    raise ValueError("Artifact content mismatch")
         return identifier
 
     def read_artifact(self, identifier):

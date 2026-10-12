@@ -47,8 +47,23 @@ Public page: http://185.243.48.232:8095
 Review requests that exceed the existing input estimate cap first serialize drafts
 as sparse column tables. Repeated long text can use an exact shared string pool.
 This is lossless draft serialization: claim IDs, values, units, conditions, source
-citations and the complete evidence packet stay intact. No evidence expansion or
-larger context cap is triggered. If the packed request still cannot fit, it fails.
+citations and the complete evidence packet stay intact. If the complete request
+still exceeds its fixed cap, `requirement-v1` review partitions divide the section's
+requirements into fitting groups. Every part receives the **same complete frozen
+source packet** and both readers' **entire answers for its requirements**. Global
+pins, circuits and notes remain intact. A requirement is never split into partial
+claim rows, because that could create false missing-fact decisions.
+
+All parts are preflighted before any paid request. Completed, validated parts are
+saved separately and resumed; final review/coverage is marked complete only after
+all parts validate and merge. A negative issue vetoes positive claim support. Part
+cache identity includes source-image bytes, aliases, schema, policy, model,
+reasoning and output budget. Main progress still represents 51 logical stages;
+`review:10:part:1` events provide detail without inflating that count.
+
+No evidence expansion or larger context cap is triggered. If one whole requirement
+with its frozen evidence still cannot fit, a typed `review_budget_exceeded` error
+reports the section, estimate and program cap before inference.
 
 ## Local start
 
@@ -102,8 +117,16 @@ uv run --extra web --extra dev ruff check src tests
 Tests cover first-target policy (including an ambiguous first target), single-run
 creation, event cursors, restart reuse, invalid PDFs, queue limits, secret/static
 isolation, explicit resume/double-enqueue prevention, vision/schema transport, usage
-accounting and truncation/refusal rejection. Core tests also cover draft round trips
-and bounded review compaction with unchanged source packets.
+accounting and truncation/refusal rejection. Core tests also cover draft round trips,
+bounded review compaction, requirement partition coverage, partial resume and cache
+identity with unchanged source packets. Concurrent GridFS duplicates are accepted
+only after the winning artifact is complete and its bytes/checksum are verified.
+
+Failures expose allowlisted codes and safe numerical details, not upstream bodies:
+program budget, provider/network, storage and output validation are distinguished.
+Scheduler diagnostics persist the actual failing logical stage and safe source
+frames. PDF content, prompts, credentials and arbitrary exception messages never
+appear in public errors.
 
 ## Verified live test (2026-10-10)
 
@@ -131,3 +154,32 @@ benchmark**. A fresh controlled run is needed for a latency or accuracy comparis
 against the existing gold standard.
 
 [Tested live output](http://185.243.48.232:8095/?job=2e835ffe2aad4dfb8c6f0dc6c3342786)
+
+## Recovered production run (2026-10-12)
+
+The reported `CY7C64225.pdf` job (`b756c7fa586a413ba560ef9091984d97`, run
+`7d7e1e6d2a2b4afa`) had completed 50 logical stages and repeatedly stopped before
+review section 10 could reach inference. Its packed request estimate was 20,577
+against the program's unchanged 20,000 estimated-input-token cap.
+
+The new planner produced two requirement groups: `10.protocols` (17,353 estimated
+input tokens) and `10.address` + `10.levels` (19,035). Both retained the same 253
+source aliases/regions and seven images. The live page's Continue button resumed
+that same run: scheduler telemetry confirmed **50 stages reused, one logical
+stage executed**, with two successful review-part API requests. The downloaded
+JSON validated all 17 sections and the exact 51 requirement IDs: 327 claims,
+167 recorded issues, status `needs_review`, and no unreviewed sections.
+
+Reported API input usage was 18,612 and 20,294 tokens respectively; the local
+preflight is an estimate, not an exact billing/context measure. It must not be
+presented as a hard limit on provider-reported tokens. The two recorded model
+requests took about 56 and 280 seconds. The page's lifetime clock includes the
+previous day's paused run and is not an active-processing latency benchmark.
+
+The recovery page had no browser console errors/warnings, and JSON download was
+tested through the UI. Offline regression checks include lossless scope/source
+coverage, failed-part resume, changed-image cache invalidation, invalid model IDs,
+GridFS races and safe failure diagnostics. The complete suite passed **202 tests**
+and Ruff passed.
+
+[Recovered live output](http://185.243.48.232:8095/?job=b756c7fa586a413ba560ef9091984d97)

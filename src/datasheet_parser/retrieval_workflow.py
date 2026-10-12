@@ -355,39 +355,19 @@ class RetrievalWorkflow:
             self.store.put("blind_reads", blind)
         return blind
 
-    def review_retrieved(self, run, sid, record):
-        key = f"{run['id']}:{sid}"
-        try:
-            return self.store.get("reviews", key)
-        except KeyError:
-            pass
-        blind = self.blind_retrieved(run, sid)
+    def _prepare_review_request(self, run, sid, record, blind, packet, original, independent, scope=None):
         optimized = run.get("packet_version") == "budget-v1"
-        if optimized:
-            required = cited_regions(record["section"]) | cited_regions(blind["section"])
-            original = compact_review(record["section"], run["target"]["id"])
-            independent = compact_review(blind["section"], run["target"]["id"])
-        else:
-            required = set(record["supplied_region_ids"]) | set(blind["supplied_region_ids"])
-            original, independent = record["section"], blind["section"]
-        packet = self.retrieval_packet(
-            run, sid, complement=True, required_regions=required, role="review",
-            reserved_tokens=self.request_reserved_tokens(run, sid, Review, (original, independent))
-            if optimized else None,
-        )
-        # The joint source allowance reserves a conservative estimate of draft aliases
-        # and instructions. A total-only reservation overflow can still fit after exact
-        # serialization; never reject it without checking the complete real request.
         overflow = packet.metrics.get("mandatory_overflow", {})
-        if overflow and set(overflow) != {"total_tokens"}:
-            raise ValueError(f"Review {sid}: cited evidence exceeds packet budget; inspect packet metrics.")
+        request_requirements = requirements(sid)
+        if scope is not None:
+            request_requirements = {req: request_requirements[req] for req in scope}
         dumps = (lambda value: json.dumps(value, ensure_ascii=False, separators=(",", ":"))) if optimized else json.dumps
         prompt = (
             "\nAudit original and independent extractions against source. Neither is authoritative. "
             "Check correctness, missing facts, qualifiers, conditions, wrong targets and absent decisions. "
             "List only supported original claim IDs and issues; no explanation for passed claims. "
             "Agreement alone is not proof. reviewed_region_ids are source aliases actually inspected.\n"
-            f"TARGET: {json.dumps(run['target'])}\nREQUIREMENTS: {json.dumps(requirements(sid))}\n"
+            f"TARGET: {json.dumps(run['target'])}\nREQUIREMENTS: {json.dumps(request_requirements)}\n"
             f"ORIGINAL: {dumps(packet.encode(original))}\n"
             f"INDEPENDENT: {dumps(packet.encode(independent))}\n{packet.text}"
         )
@@ -411,8 +391,23 @@ class RetrievalWorkflow:
                 f"ORIGINAL_ADDITIONAL_SOURCE: {json.dumps(extra_original)}\n"
                 f"INDEPENDENT_ADDITIONAL_SOURCE: {json.dumps(extra_independent)}"
             )
+        if scope is not None:
+            prompt += (
+                "\nPartitioned review v1: review ONLY the REQUIREMENTS listed above. Both draft views "
+                "contain ALL claims and findings for those requirements, including empty findings. "
+                "Other requirements are audited by other parts; do not infer absence from their omission. "
+                "Global pins, complete circuits and notes are retained intact. Every part receives the "
+                "same frozen source packet, including the omission-audit evidence. Inspect each listed "
+                "requirement for missing facts as well as wrong claims. supported_claim_ids and non-null "
+                "issue.claim_id MUST be original IDs shown in this part, never independent IDs or row numbers. "
+                "Each issue.requirement_id must be in this part's REQUIREMENTS."
+            )
         generation_budget = output_budget(sid, "review", rows=len(record["section"]["claims"])) if optimized else 6000
-        metrics = {**packet.metrics, "review_original_chars": len(dumps(original)),
+        transient = {"review_original_chars", "review_independent_chars", "draft_encoding",
+                     "uncompressed_preflight", "serialized_preflight", "draft_text_pool_entries",
+                     "request_token_budget", "reservation_warning"}
+        metrics = {**{k: v for k, v in packet.metrics.items() if k not in transient},
+                   "review_original_chars": len(dumps(original)),
                    "review_independent_chars": len(dumps(independent))}
         if optimized:
             from .engine import POLICY
@@ -467,44 +462,146 @@ class RetrievalWorkflow:
                         exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
             metrics["serialized_preflight"] = exact_input
             metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
-            if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
-                saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
-                self.store.put("evidence_packets", {**saved, "metrics": metrics})
-                raise ValueError(f"Review {sid}: cited evidence exceeds packet budget after complete serialization; inspect packet metrics.")
             if overflow:
                 metrics["reservation_warning"] = overflow
-                metrics["mandatory_overflow"] = {}
-            packet.metrics.update(metrics)
-            saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
-            self.store.put("evidence_packets", {**saved, "metrics": metrics})
-        parsed = self.call(
-            run["id"],
-            f"review:{sid}",
-            Review,
-            prompt,
-            packet.images,
-            request_metrics=metrics,
-            output_budget=generation_budget,
-        )
-        review = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
-        claims = {c["id"] for c in record["section"]["claims"]}
-        if not review.reviewed_region_ids or not set(review.supported_claim_ids) <= claims:
+                if exact_input["input_tokens_estimate"] <= run["retrieval_config"]["request_token_budget"]:
+                    metrics["mandatory_overflow"] = {}
+        return {"prompt": prompt, "metrics": metrics, "output_budget": generation_budget,
+                "input_tokens_estimate": exact_input["input_tokens_estimate"] if optimized else 0}
+
+    @staticmethod
+    def _validate_review_part(review, scope, claims):
+        by_id = {c["id"]: c for c in claims}
+        if not review.reviewed_region_ids or not set(review.supported_claim_ids) <= set(by_id):
             raise ValueError("Review contains unknown claims or has not inspected source")
         for issue in review.issues:
-            if issue.requirement_id not in requirements(sid):
+            if issue.requirement_id not in scope:
                 raise ValueError("Review issue has invalid requirement")
-        row = {"id": key, "run_id": run["id"], "section_id": sid, **review.model_dump(mode="json")}
+            if issue.claim_id is not None and (
+                issue.claim_id not in by_id or by_id[issue.claim_id]["requirement_id"] != issue.requirement_id
+            ):
+                raise ValueError("Review issue has invalid original claim or requirement association")
+
+    def _review_batched(self, run, sid, record, blind, packet, original, independent):
+        from hashlib import sha256
+
+        from .review_batches import merge_review_batches, plan_review_batches
+
+        limit = run["retrieval_config"]["request_token_budget"]
+        plan = plan_review_batches(
+            original, independent, list(requirements(sid)),
+            lambda left, right, scope: self._prepare_review_request(
+                run, sid, record, blind, packet, left, right, scope), limit, sid,
+        )
+        # All parts are preflighted before any model request. The source packet is
+        # identical in every part: no re-retrieval, added pages, or clipped conditions.
+        from .engine import POLICY
+        from .providers import LLMRequest
+
+        fingerprints = [LLMRequest(
+            f"review:{sid}:part:{i}", POLICY + part["prompt"] + (
+                f"\nOutput token target: {part['output_budget']}. Be concise; preserve facts and conditions."
+            ), strict_schema(Review), packet.images, output_budget=part["output_budget"],
+        ).fingerprint(self.settings.model, self.settings.reasoning) for i, part in enumerate(plan, 1)]
+        plan_hash = sha256(json.dumps({"version": "requirement-v1", "provider": run["provider"],
+            "aliases": packet.aliases, "chunk_ids": packet.chunk_ids, "fingerprints": fingerprints},
+            sort_keys=True).encode()).hexdigest()
+        key = f"{run['id']}:{sid}"
+        plan_id = key + ":review-batches-v1"
+        self.store.put("review_batch_plans", {
+            "id": plan_id, "run_id": run["id"], "section_id": sid,
+            "version": "requirement-v1", "plan_hash": plan_hash,
+            "source_region_ids": sorted(packet.allowed), "chunk_ids": packet.chunk_ids,
+            "parts": [{"scope": part["scope"], "original_claim_ids": part["original_claim_ids"],
+                       "input_tokens_estimate": part["input_tokens_estimate"]} for part in plan],
+        })
+        self.event(run["id"], f"review:{sid}", "started", kind="code", batch_count=len(plan))
+        reviews = []
+        for i, part in enumerate(plan, 1):
+            part_id = f"{key}:{plan_hash}:part:{i}"
+            claims = [c for c in record["section"]["claims"] if c["requirement_id"] in part["scope"]]
+            try:
+                saved = self.store.get("review_parts", part_id)
+                review = Review.model_validate(saved["review"])
+            except KeyError:
+                part["metrics"].update(review_partition_version="requirement-v1", review_part=i,
+                                       review_parts=len(plan), review_requirements=part["scope"])
+                parsed = self.call(
+                    run["id"], f"review:{sid}:part:{i}", Review, part["prompt"], packet.images,
+                    request_metrics=part["metrics"], output_budget=part["output_budget"],
+                )
+                review = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
+                self._validate_review_part(review, part["scope"], claims)
+                self.store.put("review_parts", {"id": part_id, "run_id": run["id"], "section_id": sid,
+                    "plan_hash": plan_hash, "part": i, "scope": part["scope"],
+                    "review": review.model_dump(mode="json")})
+            self._validate_review_part(review, part["scope"], claims)
+            if not (set(review.reviewed_region_ids) | cited_regions(review.model_dump(mode="json"))) <= packet.allowed:
+                raise ValueError("Saved review part cites unsupplied evidence")
+            reviews.append(review)
+        return merge_review_batches(reviews), {"partition_version": "requirement-v1",
+            "partition_count": len(plan), "partition_plan_id": plan_id, "partition_plan_hash": plan_hash}
+
+    def review_retrieved(self, run, sid, record):
+        try:
+            return self._review_retrieved(run, sid, record)
+        except Exception as error:
+            # Inference completion is not semantic/persistence completion.
+            # Keep logical progress accurate for failed decode, planning and writes.
+            if not getattr(error, "_datasheet_stage", None):
+                error._datasheet_stage = f"review:{sid}"
+            self.event(run["id"], f"review:{sid}", "failed", kind="code")
+            raise
+
+    def _review_retrieved(self, run, sid, record):
+        from .errors import ReviewBudgetError
+
+        key = f"{run['id']}:{sid}"
+        try:
+            return self.store.get("reviews", key)
+        except KeyError:
+            pass
+        blind = self.blind_retrieved(run, sid)
+        optimized = run.get("packet_version") == "budget-v1"
+        if optimized:
+            required = cited_regions(record["section"]) | cited_regions(blind["section"])
+            original = compact_review(record["section"], run["target"]["id"])
+            independent = compact_review(blind["section"], run["target"]["id"])
+        else:
+            required = set(record["supplied_region_ids"]) | set(blind["supplied_region_ids"])
+            original, independent = record["section"], blind["section"]
+        packet = self.retrieval_packet(
+            run, sid, complement=True, required_regions=required, role="review",
+            reserved_tokens=self.request_reserved_tokens(run, sid, Review, (original, independent))
+            if optimized else None,
+        )
+        prepared = self._prepare_review_request(run, sid, record, blind, packet, original, independent)
+        overflow = packet.metrics.get("mandatory_overflow", {})
+        if overflow and set(overflow) != {"total_tokens"}:
+            if optimized:
+                raise ReviewBudgetError(sid, prepared["input_tokens_estimate"],
+                                       run["retrieval_config"]["request_token_budget"], "cited_evidence_bundle")
+            raise ValueError(f"Review {sid}: cited evidence exceeds packet budget; inspect packet metrics.")
+        batched = optimized and prepared["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]
+        packet.metrics.update(prepared["metrics"])
+        if optimized:
+            saved = self.store.get("evidence_packets", f"{run['id']}:{sid}:review:0")
+            self.store.put("evidence_packets", {**saved, "metrics": prepared["metrics"]})
+        partition = {}
+        if batched:
+            review, partition = self._review_batched(run, sid, record, blind, packet, original, independent)
+        else:
+            parsed = self.call(run["id"], f"review:{sid}", Review, prepared["prompt"], packet.images,
+                               request_metrics=prepared["metrics"], output_budget=prepared["output_budget"])
+            review = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
+            self._validate_review_part(review, requirements(sid), record["section"]["claims"])
+        row = {"id": key, "run_id": run["id"], "section_id": sid, **review.model_dump(mode="json"), **partition}
         self.store.put("reviews", row)
         for req in requirements(sid):
             cov = self.store.get("coverage", f"{run['id']}:{req}")
-            self.store.put(
-                "coverage",
-                {
-                    **cov,
-                    "review_status": "issues_found"
-                    if any(i.requirement_id == req for i in review.issues)
-                    else "reviewed",
-                    "reviewed_region_ids": review.reviewed_region_ids,
-                },
-            )
+            self.store.put("coverage", {**cov, "review_status": "issues_found"
+                if any(i.requirement_id == req for i in review.issues) else "reviewed",
+                "reviewed_region_ids": review.reviewed_region_ids})
+        if batched:
+            self.event(run["id"], f"review:{sid}", "completed", kind="code", **partition)
         return row

@@ -1,6 +1,7 @@
 """Resumable evidence workflow. Mongo persists each completed stage independently."""
 
 import json
+import logging
 import time
 import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
@@ -13,6 +14,7 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from .config import Settings
+from .errors import failure_diagnostics
 from .models import Catalog, EvidenceMap, ExtractionResult, Review, SectionResult, Target
 from .providers import LLMRequest, PendingResponse, make_provider, strict_schema
 from .requirements import KEYWORDS, SECTIONS, requirements
@@ -34,6 +36,9 @@ No probability/confidence invented by the model. Return only the requested schem
 
 def now():
     return datetime.now(UTC).isoformat()
+
+
+LOG = logging.getLogger(__name__)
 
 
 class WorkflowState(TypedDict):
@@ -661,6 +666,7 @@ class Engine(RetrievalWorkflow):
             workers=workers, section_ids=section_ids, reused_stages=reused,
         )
         failure = None
+        primary_failure = None
         secondary_failures = []
         executed = 0
         try:
@@ -692,13 +698,14 @@ class Engine(RetrievalWorkflow):
                             future.result()
                             completed.add(stage)
                         except Exception as error:  # noqa: BLE001 -- persist/drain any model-stage failure
+                            diagnosis = failure_diagnostics(error, f"{stage.role}:{stage.section_id}")
                             if failure is None:
                                 failure = error
+                                primary_failure = diagnosis
+                                # Preserve the true stage for callers; later drained stages can finish after it.
+                                error._datasheet_stage = diagnosis["stage"]
                             else:
-                                secondary_failures.append({
-                                    "stage": f"{stage.role}:{stage.section_id}",
-                                    "error_type": type(error).__name__,
-                                })
+                                secondary_failures.append(diagnosis)
                     if failure:
                         # No submission after failure. The executor waits for the bounded in-flight set.
                         for future, stage in list(pending.items()):
@@ -706,17 +713,20 @@ class Engine(RetrievalWorkflow):
                                 future.result()
                                 completed.add(stage)
                             except Exception as error:  # noqa: BLE001 -- all in-flight work must be drained
-                                secondary_failures.append({
-                                    "stage": f"{stage.role}:{stage.section_id}",
-                                    "error_type": type(error).__name__,
-                                })
+                                secondary_failures.append(
+                                    failure_diagnostics(error, f"{stage.role}:{stage.section_id}")
+                                )
                         break
             if failure:
                 raise failure
-        except Exception:
+        except Exception as error:
+            primary_failure = primary_failure or failure_diagnostics(error, "schedule:dag-v1")
+            LOG.error("Scheduler failed: run=%s diagnostics=%s", run["id"],
+                      json.dumps(primary_failure, ensure_ascii=True, sort_keys=True))
             self.event(
                 run["id"], "schedule:dag-v1", "failed", kind="code",
                 workers=workers, executed_stages=executed, reused_stages=reused,
+                primary_failure=primary_failure,
                 secondary_failures=secondary_failures,
                 telemetry={"elapsed_seconds": time.monotonic() - started},
             )

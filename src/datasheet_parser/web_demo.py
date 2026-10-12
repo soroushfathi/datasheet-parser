@@ -21,6 +21,7 @@ from starlette.formparsers import MultiPartException
 
 from .config import Settings
 from .engine import Engine
+from .errors import failure_diagnostics, public_failure_message
 from .ingestion import ingest
 from .providers import make_provider
 from .requirements import SECTIONS
@@ -112,6 +113,7 @@ class DemoJobs:
             if self.queue.full():
                 raise Full
             self.store.put("demo_jobs", {**job, "status": "queued", "error": None,
+                "failure_code": None, "failure_details": None, "failed_stage": None,
                 "finished_at": None, "updated_at": timestamp()})
             self.queue.put_nowait(identifier)
 
@@ -121,7 +123,7 @@ class DemoJobs:
             sequence = job["sequence"] + 1
             stages = dict(job["stages"])
             match = STAGE.match(message)
-            if match:
+            if match and int(match.group(2)) in SECTIONS:
                 role, section, status = match.groups()
                 stages[f"{role}:{section}"] = status
             self.store.put("demo_events", {"id": f"{identifier}:{sequence:05d}",
@@ -135,7 +137,8 @@ class DemoJobs:
             "sequence": {"$gt": after}}), key=lambda e: e["sequence"])
         # Only selected public fields leave the API. No paths, prompts, credentials or artifacts.
         keys = {"id", "filename", "page_count", "status", "created_at", "started_at", "finished_at",
-                "stage", "sequence", "stages", "target", "target_count", "model", "summary", "error"}
+                "stage", "sequence", "stages", "target", "target_count", "model", "summary", "error",
+                "failure_code", "failure_details", "failed_stage"}
         partial = []
         if job.get("run_id"):
             for record in sorted(self.store.find("results", {"run_id": job["run_id"]}),
@@ -159,13 +162,30 @@ class DemoJobs:
             try:
                 self.run(identifier)
             except Exception as error:  # noqa: BLE001 - isolate jobs; never log arbitrary upstream text.
-                # Avoid dumping arbitrary upstream errors containing auth or source data.
-                LOG.error("Job failed: %s (%s)", identifier, type(error).__name__)
-                self.update(identifier, status="failed", finished_at=timestamp(),
-                            error="اجرای نمونه متوقف شد. اتصال API یا سند نیاز به بررسی دارد؛ شناسهٔ اجرا را ارسال کن.")
-                self.event(identifier, "pipeline: failed")
+                try:
+                    self.fail(identifier, error)
+                except Exception as persistence_error:  # noqa: BLE001 - a database outage must not kill the worker.
+                    LOG.error("Failure persistence unavailable: id=%s diagnostics=%s", identifier,
+                              json.dumps(failure_diagnostics(persistence_error), ensure_ascii=True, sort_keys=True))
             finally:
                 self.queue.task_done()
+
+    def fail(self, identifier, error):
+        """Persist actionable diagnostics without exposing arbitrary upstream content."""
+        job = self.store.get("demo_jobs", identifier)
+        latest_stage = job.get("stage", "").split(": ", 1)[0]
+        failure = failure_diagnostics(error)
+        if not failure["stage"]:
+            failure = failure_diagnostics(error, latest_stage)
+        LOG.error("Job failed: id=%s diagnostics=%s", identifier,
+                  json.dumps(failure, ensure_ascii=True, sort_keys=True))
+        self.update(identifier, status="failed", finished_at=timestamp(),
+                    error=public_failure_message(failure), failure_code=failure["code"],
+                    failure_details=failure["details"], failed_stage=failure["stage"])
+        stage = failure["stage"]
+        if stage and re.fullmatch(r"(?:extract|blind|review):\d+", stage):
+            self.event(identifier, f"{stage}: failed")
+        self.event(identifier, "pipeline: failed")
 
     def run(self, identifier):
         job = self.store.get("demo_jobs", identifier)

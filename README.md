@@ -14,6 +14,10 @@ uses the supplied OpenAI-compatible router (`openai/gpt-5.5`, medium reasoning),
 automatically selects the first discovered model/package entry, shows real progress,
 and offers the complete 17-section JSON. See [web demo setup and deployment](docs/web-demo.md).
 The API key stays on the server; it is never embedded in the page or committed.
+Oversized reviews keep the fixed input cap and split by complete requirements,
+repeating the same source evidence in each part. Validated parts resume independently;
+final review completes only after all parts merge. The page distinguishes program
+budget, provider, storage and validation failures with safe diagnostics.
 
 اجراهای مرجع و بنچمارک قبلی با **Codex CLI** و ورود حساب **ChatGPT Pro** اجرا شده‌اند؛
 برای آن اجراها کلید OpenAI API استفاده نشده است. صفحهٔ آزمایش زندهٔ جدید از API روتر
@@ -57,7 +61,7 @@ flowchart TD
     E --> V["Code · اعتبارسنجی و ثبت مسائل<br/>validate_section()<br/>شواهد، نیازمندی‌ها، واحدها، پین‌ها و مدار<br/>شواهد ناکافی ثبت می‌شوند؛ expanded غیرفعال است"]
     S --> BP["Code / Heuristic · بازیابی مکمل برای بازخوانی<br/>retrieval_packet(complement=True)<br/>بدون استفاده از پاسخ استخراج اول"]
     BP --> B["AI · بازخوانی مستقل همان بخش<br/>Engine.blind_retrieved() · blind read<br/>هم‌زمان با استخراج؛ بدون پاسخ اول<br/>gpt-6-astra · high"]
-    V --> RP["Code · ورودی فشردهٔ بازبین<br/>compact_review() + cited_regions()<br/>هر دو پاسخ + همهٔ شواهد موردارجاع + جست‌وجوی موارد جاافتاده"]
+    V --> RP["Code · ورودی فشردهٔ بازبین<br/>compact_review() + cited_regions()<br/>هر دو پاسخ + همهٔ شواهد موردارجاع + جست‌وجوی موارد جاافتاده<br/>در صورت سرریز: تقسیم بر نیازمندی با شواهد ثابت"]
     B --> RP
     RP --> A["AI · مقایسه دو پاسخ با سند اصلی<br/>Engine.review_section() · audit<br/>فقط پس از تکمیل extract و blind همان بخش<br/>gpt-6-astra · high"]
     A --> Q{"Control · همهٔ مراحل تکمیل شدند؟<br/>Engine.resume() · DAG scheduler"}

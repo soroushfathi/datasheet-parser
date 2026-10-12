@@ -14,6 +14,7 @@ from PIL import Image
 from datasheet_parser.config import Settings
 from datasheet_parser.contracts import cited_regions
 from datasheet_parser.engine import Engine
+from datasheet_parser.errors import ReviewBudgetError
 from datasheet_parser.models import Review
 from datasheet_parser.providers import ProviderError, RecordedProvider
 from datasheet_parser.requirements import SECTIONS, requirements
@@ -106,7 +107,7 @@ class FixtureProvider(RecordedProvider):
 
     def execute(self, request, folder, images):
         self.requests.append(request)
-        role, section_text = request.task.split(":")
+        role, section_text = request.task.split(":")[:2]
         sid = int(section_text)
         packet = self.store.get("evidence_packets", f"{self.run_id}:{sid}:{role}:0")
         aliases = packet["aliases"]
@@ -342,8 +343,9 @@ def test_serialized_review_overflow_fails_before_fake_or_real_inference(tmp_path
     oversized = copy.deepcopy(record)
     oversized["section"]["claims"][0]["explanation"] = "Preserved source condition: " + "A" * 22000
     before = len(provider.requests)
-    with pytest.raises(ValueError, match="cited evidence exceeds packet budget"):
+    with pytest.raises(ReviewBudgetError) as failure:
         parser.review_retrieved(run, 4, oversized)
+    assert failure.value.estimate > failure.value.limit == 20000
     assert len(provider.requests) == before
     assert not store.find("reviews", {"run_id": run_id})
     assert not any("expanded" in request.task for request in provider.requests)

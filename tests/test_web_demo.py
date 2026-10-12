@@ -6,6 +6,7 @@ from PIL import Image
 
 from datasheet_parser.config import Settings
 from datasheet_parser.engine import Engine
+from datasheet_parser.errors import ReviewBudgetError
 from datasheet_parser.models import Catalog, Target
 from datasheet_parser.providers import LLMRequest, OpenAIChatProvider, ProviderError
 from datasheet_parser.store import MemoryStore
@@ -230,3 +231,87 @@ def test_chat_vision_schema_usage_and_secret_isolation(tmp_path, monkeypatch):
     assert provider.last_record["usage"]["total_tokens"] == 15
     assert payload["max_completion_tokens"] > request().output_budget
     assert all("fixture-secret" not in p.read_text() for p in (tmp_path / "llm").rglob("*.json"))
+
+
+def test_job_budget_failure_is_actionable_preserves_checkpoint_and_hides_secrets(setup, caplog):
+    store, settings, jobs = setup
+    identifier = jobs.submit(b"fixture", "x.pdf", 1)
+    jobs.queue.get_nowait()
+    jobs.update(identifier, run_id="saved-run", target=target("FIRST").model_dump(),
+                stages={"extract:10": "completed", "blind:10": "completed"})
+    # A different concurrent stage has finished after the actual failed stage.
+    jobs.event(identifier, "review:17: completed")
+    error = ReviewBudgetError(10, 20577, 20000, reason="fixture-secret")
+    jobs.fail(identifier, error)
+    public = TestClient(create_app(store, settings, jobs)).get(f"/api/jobs/{identifier}").json()
+    assert public["failure_code"] == "review_budget_exceeded"
+    assert public["failed_stage"] == "review:10"
+    assert public["failure_details"]["input_tokens_estimate"] == 20577
+    assert public["failure_details"]["request_token_budget"] == 20000
+    assert "20,577" in public["error"] and "20,000" in public["error"]
+    assert public["can_resume"] and public["stages"]["review:10"] == "failed"
+    assert public["stages"]["extract:10"] == "completed"
+    assert store.get("demo_jobs", identifier)["run_id"] == "saved-run"
+    assert "fixture-secret" not in json.dumps(public) + caplog.text
+    assert "source_frames" not in public and "error_type" not in public
+    jobs.requeue(identifier)
+    for key in ("error", "failure_code", "failure_details", "failed_stage"):
+        assert store.get("demo_jobs", identifier)[key] is None
+
+
+def test_batch_review_events_never_add_steps_to_51_stage_progress(setup):
+    _store, _settings, jobs = setup
+    identifier = jobs.submit(b"fixture", "x.pdf", 1)
+    for sid in range(1, 18):
+        for role in ("extract", "blind", "review"):
+            jobs.event(identifier, f"{role}:{sid}: completed")
+    jobs.event(identifier, "review:10:batch:1: completed")
+    jobs.event(identifier, "review:10:batch:2: completed")
+    jobs.event(identifier, "review:99: completed")
+    public = jobs.snapshot(identifier)
+    assert len(public["stages"]) == 51
+    assert all(status == "completed" for status in public["stages"].values())
+    assert any(e["message"] == "review:10:batch:2: completed" for e in public["events"])
+
+
+def test_worker_reports_typed_provider_failure_without_upstream_body(setup, caplog):
+    _store, _settings, jobs = setup
+    identifier = jobs.submit(b"fixture", "x.pdf", 1)
+
+    def fail_run(current):
+        jobs.stopping = True
+        assert current == identifier
+        jobs.event(identifier, "review:3: started")
+        error = ProviderError("API key fixture-secret and private document text", code="gateway_error", retryable=True)
+        error._datasheet_stage = "review:2"
+        raise error
+
+    jobs.run = fail_run
+    jobs._work()
+    public = jobs.snapshot(identifier)
+    assert public["failed_stage"] == "review:2"
+    assert public["failure_code"] == "gateway_error" and public["status"] == "failed"
+    assert "fixture-secret" not in json.dumps(public) + caplog.text
+    assert jobs.queue.unfinished_tasks == 0
+
+
+def test_worker_survives_failure_persistence_outage(setup, monkeypatch, caplog):
+    _store, _settings, jobs = setup
+    first = jobs.submit(b"first", "x.pdf", 1)
+    second = jobs.submit(b"second", "y.pdf", 1)
+    seen = []
+
+    def run(identifier):
+        seen.append(identifier)
+        if identifier == first:
+            raise RuntimeError("fixture-secret upstream error")
+        jobs.stopping = True
+
+    def cannot_persist(identifier, error):
+        raise OSError("fixture-secret persistence path")
+
+    monkeypatch.setattr(jobs, "run", run)
+    monkeypatch.setattr(jobs, "fail", cannot_persist)
+    jobs._work()
+    assert seen == [first, second] and jobs.queue.unfinished_tasks == 0
+    assert "fixture-secret" not in caplog.text
