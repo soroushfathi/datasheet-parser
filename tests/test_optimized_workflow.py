@@ -186,6 +186,7 @@ def engine(tmp_path, store, **provider_options):
         workers=1,
         llm_attempts=1,
         retrieval_top_k=1,
+        quality="baseline",
         optimization="budget-v1",
         packet_token_budget=6000,
         request_token_budget=20000,

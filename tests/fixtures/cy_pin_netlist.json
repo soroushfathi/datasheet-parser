@@ -1,0 +1,1449 @@
+[
+  {
+    "section_id": 1,
+    "status": "present",
+    "findings": [],
+    "claims": [],
+    "pins": [
+      {
+        "pad": "1",
+        "name": "GND",
+        "electrical_type": "ground",
+        "functions": [
+          "Ground"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "2",
+        "name": "Tx_LED",
+        "electrical_type": "output",
+        "functions": [
+          "Active low, UART Tx_LED, max current –20 mA"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "3",
+        "name": "SUSPEND",
+        "electrical_type": "output",
+        "functions": [
+          "Active low indicates USB is suspended"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "4",
+        "name": "TxD",
+        "electrical_type": "output",
+        "functions": [
+          "UART Data Transmit, Output"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "5",
+        "name": "DTR",
+        "electrical_type": "output",
+        "functions": [
+          "Data Terminal Ready (DTR) Pin"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "6",
+        "name": "RESET",
+        "electrical_type": "input",
+        "functions": [
+          "No Connect (NC)"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect (NC)"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "7",
+        "name": "VBUS",
+        "electrical_type": "input",
+        "functions": [
+          "Used for VBUS monitoring"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "This pin requires a series resistor when connected to VBUS.",
+          "The recommended values are in the range of 1 kΩ–10 kΩ."
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "8",
+        "name": "DSR",
+        "electrical_type": "input",
+        "functions": [
+          "Data Set Ready (DSR) pin"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "9",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "10",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "11",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "12",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "13",
+        "name": "GND",
+        "electrical_type": "ground",
+        "functions": [
+          "USB Ground"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "14",
+        "name": "D+",
+        "electrical_type": "unknown",
+        "functions": [
+          "USB D+ Line"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "15",
+        "name": "D–",
+        "electrical_type": "unknown",
+        "functions": [
+          "USB D– Line"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "16",
+        "name": "VDD",
+        "electrical_type": "power_in",
+        "functions": [
+          "Supply Voltage (3.3 V or 5 V)"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "17",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "18",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "19",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "20",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "21",
+        "name": "CTS",
+        "electrical_type": "input",
+        "functions": [
+          "Clear to Send (CTS) input, handshake signal"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "22",
+        "name": "WAKE",
+        "electrical_type": "input",
+        "functions": [
+          "Active high on this pin, generates Remote Wake-Up signal on the Bus"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "23",
+        "name": "RxD",
+        "electrical_type": "input",
+        "functions": [
+          "UART Data Receive, Input"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "24",
+        "name": "RTS",
+        "electrical_type": "output",
+        "functions": [
+          "Request to Sent (RTS) output, handshake signal"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "25",
+        "name": "NC",
+        "electrical_type": "nc",
+        "functions": [
+          "No Connect"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [
+          "No Connect"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "26",
+        "name": "VCFG",
+        "electrical_type": "output",
+        "functions": [
+          "Active low indicates VBUS is detected and device is configured"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "27",
+        "name": "Rx_LED",
+        "electrical_type": "output",
+        "functions": [
+          "Active low, UART Rx_LED, max current –20 mA"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      },
+      {
+        "pad": "28",
+        "name": "VDD",
+        "electrical_type": "power_in",
+        "functions": [
+          "Supply Voltage. 3.3 V or 5 V"
+        ],
+        "conditions": [
+          "28-pin part pinout (SSOP)"
+        ],
+        "connection_requirements": [],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p6:l6",
+          "6bbb8ba9df9d8df35aa961eb:p6:t1"
+        ]
+      }
+    ],
+    "circuits": [],
+    "notes": []
+  },
+  {
+    "section_id": 2,
+    "status": "ambiguous",
+    "findings": [],
+    "claims": [],
+    "pins": [],
+    "circuits": [
+      {
+        "id": "fig3_bus_powered_configuration",
+        "figure": "Figure 3. Bus Powered Configuration",
+        "conditions": [
+          "Application Circuits",
+          "Bus Powered Design",
+          "The figure below illustrates the USB bus powered design using CY7C64225.",
+          "A 1K series resistor is required for VBUS pin of CY7C64225 in this configuration."
+        ],
+        "components": [
+          {
+            "ref": "U1",
+            "ref_origin": "generated",
+            "kind": "IC",
+            "value": "CY7C64225",
+            "terminals": [
+              "VBUS",
+              "D+",
+              "D-",
+              "VDD_A",
+              "VDD_B",
+              "GND_A",
+              "GND_B",
+              "Rx_LED",
+              "VCFG",
+              "Tx_LED",
+              "SUSPEND",
+              "WAKEUP",
+              "RESET",
+              "TxD",
+              "RxD",
+              "RTS",
+              "CTS",
+              "DTR",
+              "DSR"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l25"
+            ]
+          },
+          {
+            "ref": "J1",
+            "ref_origin": "generated",
+            "kind": "USB connector/source",
+            "value": null,
+            "terminals": [
+              "VBUS",
+              "D+",
+              "D-",
+              "GND"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ]
+          },
+          {
+            "ref": "R1",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "1k",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l17"
+            ]
+          },
+          {
+            "ref": "R2",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "24",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ]
+          },
+          {
+            "ref": "R3",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "24",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ]
+          },
+          {
+            "ref": "D1",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "Rx_LED indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16"
+            ]
+          },
+          {
+            "ref": "R4",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l17"
+            ]
+          },
+          {
+            "ref": "D2",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "VCFG indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18"
+            ]
+          },
+          {
+            "ref": "R5",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ]
+          },
+          {
+            "ref": "D3",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "Tx_LED indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20"
+            ]
+          },
+          {
+            "ref": "R6",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ]
+          },
+          {
+            "ref": "SW2",
+            "ref_origin": "source",
+            "kind": "switch",
+            "value": null,
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l24"
+            ]
+          },
+          {
+            "ref": "C1",
+            "ref_origin": "generated",
+            "kind": "capacitor",
+            "value": "0.01uF",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l29"
+            ]
+          },
+          {
+            "ref": "R7",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "1k",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l30"
+            ]
+          }
+        ],
+        "nets": [
+          {
+            "name": "VDD",
+            "nodes": [
+              "J1.VBUS",
+              "R1.1",
+              "U1.VDD_A",
+              "U1.VDD_B",
+              "D1.anode",
+              "D2.anode",
+              "D3.anode",
+              "SW2.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l12",
+              "6bbb8ba9df9d8df35aa961eb:p7:l13",
+              "6bbb8ba9df9d8df35aa961eb:p7:l14",
+              "6bbb8ba9df9d8df35aa961eb:p7:l15",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16",
+              "6bbb8ba9df9d8df35aa961eb:p7:l23"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VBUS_MONITOR",
+            "nodes": [
+              "R1.2",
+              "U1.VBUS"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16",
+              "6bbb8ba9df9d8df35aa961eb:p7:l17"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_PLUS_CONN",
+            "nodes": [
+              "J1.D+",
+              "R2.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_PLUS_IC",
+            "nodes": [
+              "R2.2",
+              "U1.D+"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_MINUS_CONN",
+            "nodes": [
+              "J1.D-",
+              "R3.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_MINUS_IC",
+            "nodes": [
+              "R3.2",
+              "U1.D-"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "GND",
+            "nodes": [
+              "J1.GND",
+              "U1.GND_A",
+              "U1.GND_B",
+              "C1.2",
+              "R7.2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21",
+              "6bbb8ba9df9d8df35aa961eb:p7:l35"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "RX_LED_SERIES",
+            "nodes": [
+              "D1.cathode",
+              "R4.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16",
+              "6bbb8ba9df9d8df35aa961eb:p7:l17"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "RX_LED_DRIVE",
+            "nodes": [
+              "R4.2",
+              "U1.Rx_LED"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l16",
+              "6bbb8ba9df9d8df35aa961eb:p7:l17"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VCFG_LED_SERIES",
+            "nodes": [
+              "D2.cathode",
+              "R5.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VCFG_DRIVE",
+            "nodes": [
+              "R5.2",
+              "U1.VCFG"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l18",
+              "6bbb8ba9df9d8df35aa961eb:p7:l19"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "TX_LED_SERIES",
+            "nodes": [
+              "D3.cathode",
+              "R6.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "TX_LED_DRIVE",
+            "nodes": [
+              "R6.2",
+              "U1.Tx_LED"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l20",
+              "6bbb8ba9df9d8df35aa961eb:p7:l21"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "WAKEUP",
+            "nodes": [
+              "U1.WAKEUP",
+              "SW2.2",
+              "C1.1",
+              "R7.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p7",
+              "6bbb8ba9df9d8df35aa961eb:p7:l24",
+              "6bbb8ba9df9d8df35aa961eb:p7:l26",
+              "6bbb8ba9df9d8df35aa961eb:p7:l29",
+              "6bbb8ba9df9d8df35aa961eb:p7:l30"
+            ],
+            "status": "supported"
+          }
+        ],
+        "ic_ref": "U1",
+        "explicitly_unconnected_pads": [
+          "U1.RESET"
+        ],
+        "unobserved_pads": [
+          "U1.SUSPEND",
+          "U1.TxD",
+          "U1.RxD",
+          "U1.RTS",
+          "U1.CTS",
+          "U1.DTR",
+          "U1.DSR"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p7",
+          "6bbb8ba9df9d8df35aa961eb:p7:l6",
+          "6bbb8ba9df9d8df35aa961eb:p7:l7",
+          "6bbb8ba9df9d8df35aa961eb:p7:l9",
+          "6bbb8ba9df9d8df35aa961eb:p7:l10",
+          "6bbb8ba9df9d8df35aa961eb:p7:l11"
+        ],
+        "ambiguities": [
+          "TxD, RxD, RTS, CTS, DTR, DSR, and SUSPEND are shown only as dangling stubs with no observed external component connection in the supplied schematic."
+        ]
+      },
+      {
+        "id": "fig4_bus_powered_external_regulator",
+        "figure": "Figure 4. Bus Powered Design using External Regulator",
+        "conditions": [
+          "Application Circuits",
+          "Bus Powered Design using External Regulator",
+          "Figure 4 illustrates the use of CY7C64225 in bus powered mode but running at 3.3 V.",
+          "This design uses an external 5 V to 3.3 V regulator to supply the 3.3 V to CY7C64225 from VBUS.",
+          "Since the circuit is operating at 3.3 V, a voltage divider is used to provide 3.3 V from VBUS of USB port to ‘VBUS’ pin of CY7C64225."
+        ],
+        "components": [
+          {
+            "ref": "U1",
+            "ref_origin": "generated",
+            "kind": "IC",
+            "value": "CY7C64225",
+            "terminals": [
+              "VBUS",
+              "D+",
+              "D-",
+              "VDD_A",
+              "VDD_B",
+              "GND_A",
+              "GND_B",
+              "Rx_LED",
+              "VCFG",
+              "Tx_LED",
+              "SUSPEND",
+              "WAKEUP",
+              "RESET",
+              "TxD",
+              "RxD",
+              "RTS",
+              "CTS",
+              "DTR",
+              "DSR"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l29"
+            ]
+          },
+          {
+            "ref": "J1",
+            "ref_origin": "generated",
+            "kind": "USB connector/source",
+            "value": null,
+            "terminals": [
+              "VBUS",
+              "D+",
+              "D-",
+              "GND"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l14",
+              "6bbb8ba9df9d8df35aa961eb:p8:l19",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26",
+              "6bbb8ba9df9d8df35aa961eb:p8:l27"
+            ]
+          },
+          {
+            "ref": "REG1",
+            "ref_origin": "generated",
+            "kind": "regulator",
+            "value": "5V to 3.3V Regulator",
+            "terminals": [
+              "VIN",
+              "VOUT",
+              "GND"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l14",
+              "6bbb8ba9df9d8df35aa961eb:p8:l15"
+            ]
+          },
+          {
+            "ref": "R1",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "10k",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21"
+            ]
+          },
+          {
+            "ref": "R2",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "20k",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l22"
+            ]
+          },
+          {
+            "ref": "R3",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "24",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25"
+            ]
+          },
+          {
+            "ref": "R4",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "24",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l27"
+            ]
+          },
+          {
+            "ref": "D1",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "Rx_LED indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21"
+            ]
+          },
+          {
+            "ref": "R5",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l22"
+            ]
+          },
+          {
+            "ref": "D2",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "VCFG indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l23"
+            ]
+          },
+          {
+            "ref": "R6",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24"
+            ]
+          },
+          {
+            "ref": "D3",
+            "ref_origin": "generated",
+            "kind": "LED",
+            "value": "Tx_LED indicator",
+            "terminals": [
+              "anode",
+              "cathode"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25"
+            ]
+          },
+          {
+            "ref": "R7",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "560",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26"
+            ]
+          },
+          {
+            "ref": "SW2",
+            "ref_origin": "source",
+            "kind": "switch",
+            "value": null,
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l29"
+            ]
+          },
+          {
+            "ref": "C1",
+            "ref_origin": "generated",
+            "kind": "capacitor",
+            "value": "0.01uF",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l32"
+            ]
+          },
+          {
+            "ref": "R8",
+            "ref_origin": "generated",
+            "kind": "resistor",
+            "value": "1k",
+            "terminals": [
+              "1",
+              "2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l34"
+            ]
+          }
+        ],
+        "nets": [
+          {
+            "name": "USB_VBUS",
+            "nodes": [
+              "J1.VBUS",
+              "REG1.VIN",
+              "R1.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l14",
+              "6bbb8ba9df9d8df35aa961eb:p8:l19",
+              "6bbb8ba9df9d8df35aa961eb:p8:l20",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VDD",
+            "nodes": [
+              "REG1.VOUT",
+              "U1.VDD_A",
+              "U1.VDD_B",
+              "D1.anode",
+              "D2.anode",
+              "D3.anode",
+              "SW2.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l13",
+              "6bbb8ba9df9d8df35aa961eb:p8:l16",
+              "6bbb8ba9df9d8df35aa961eb:p8:l17",
+              "6bbb8ba9df9d8df35aa961eb:p8:l18",
+              "6bbb8ba9df9d8df35aa961eb:p8:l29"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VBUS_DIVIDER",
+            "nodes": [
+              "R1.2",
+              "R2.1",
+              "U1.VBUS"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l19",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21",
+              "6bbb8ba9df9d8df35aa961eb:p8:l22"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "GND",
+            "nodes": [
+              "J1.GND",
+              "REG1.GND",
+              "R2.2",
+              "U1.GND_A",
+              "U1.GND_B",
+              "C1.2",
+              "R8.2"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l27",
+              "6bbb8ba9df9d8df35aa961eb:p8:l40"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_PLUS_CONN",
+            "nodes": [
+              "J1.D+",
+              "R3.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_PLUS_IC",
+            "nodes": [
+              "R3.2",
+              "U1.D+"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_MINUS_CONN",
+            "nodes": [
+              "J1.D-",
+              "R4.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26",
+              "6bbb8ba9df9d8df35aa961eb:p8:l27"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "USB_D_MINUS_IC",
+            "nodes": [
+              "R4.2",
+              "U1.D-"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26",
+              "6bbb8ba9df9d8df35aa961eb:p8:l27"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "RX_LED_SERIES",
+            "nodes": [
+              "D1.cathode",
+              "R5.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21",
+              "6bbb8ba9df9d8df35aa961eb:p8:l22"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "RX_LED_DRIVE",
+            "nodes": [
+              "R5.2",
+              "U1.Rx_LED"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l21",
+              "6bbb8ba9df9d8df35aa961eb:p8:l22"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VCFG_LED_SERIES",
+            "nodes": [
+              "D2.cathode",
+              "R6.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l23",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "VCFG_DRIVE",
+            "nodes": [
+              "R6.2",
+              "U1.VCFG"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l23",
+              "6bbb8ba9df9d8df35aa961eb:p8:l24"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "TX_LED_SERIES",
+            "nodes": [
+              "D3.cathode",
+              "R7.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "TX_LED_DRIVE",
+            "nodes": [
+              "R7.2",
+              "U1.Tx_LED"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l25",
+              "6bbb8ba9df9d8df35aa961eb:p8:l26"
+            ],
+            "status": "supported"
+          },
+          {
+            "name": "WAKEUP",
+            "nodes": [
+              "U1.WAKEUP",
+              "SW2.2",
+              "C1.1",
+              "R8.1"
+            ],
+            "evidence_ids": [
+              "6bbb8ba9df9d8df35aa961eb:p8",
+              "6bbb8ba9df9d8df35aa961eb:p8:l29",
+              "6bbb8ba9df9d8df35aa961eb:p8:l30",
+              "6bbb8ba9df9d8df35aa961eb:p8:l32",
+              "6bbb8ba9df9d8df35aa961eb:p8:l34"
+            ],
+            "status": "supported"
+          }
+        ],
+        "ic_ref": "U1",
+        "explicitly_unconnected_pads": [
+          "U1.RESET"
+        ],
+        "unobserved_pads": [
+          "U1.SUSPEND",
+          "U1.TxD",
+          "U1.RxD",
+          "U1.RTS",
+          "U1.CTS",
+          "U1.DTR",
+          "U1.DSR"
+        ],
+        "evidence_ids": [
+          "6bbb8ba9df9d8df35aa961eb:p8",
+          "6bbb8ba9df9d8df35aa961eb:p8:l12"
+        ],
+        "ambiguities": [
+          "TxD, RxD, RTS, CTS, DTR, DSR, and SUSPEND are shown only as dangling stubs with no observed external component connection in the supplied schematic."
+        ]
+      }
+    ],
+    "notes": []
+  }
+]

@@ -265,6 +265,24 @@ class Retriever:
                     )
                 )
             score = lexical.get(chunk["id"], 0) + (10 if topic else 0)
+            if self.config.get("index_version") == "structural-10":
+                # Route a whole printed supported-rate list before generic overview
+                # headings. The index keeps wrapped comma-separated lines atomic;
+                # these source predicates select content, never supply answer values.
+                if requirement_id in {"10.protocols", "12.clocks"} and re.search(
+                    r"\b(?:baud|data|bit)\s+rates?\b|\bsupported\s+(?:clock\s+)?frequenc", text
+                ) and len(re.findall(r"\d[\d.]*\s*,", text)) >= 3:
+                    score += 20
+                if requirement_id in {"10.protocols", "12.clocks"} and re.search(
+                    r"\b(?:uart|usb|oscillator|clock)\b", heading
+                ):
+                    score += 10
+                if sid == 1 and re.search(r"pin description", heading):
+                    score += 10
+                if requirement_id == "10.levels" and (re.search(r"\b(?:led|output|line)\s+drivers?\b", heading)
+                    or (re.search(r"\b(?:sink|source)\s+(?:a\s+)?(?:maximum|max\.?)\b", text)
+                        and re.search(r"\bcurrent\s+(?:of\s+)?\d", text))):
+                    score += 20
             if protection_detail:
                 score += 3
             if sid == 7 and chunk["package_hint"] == package and chunk["visual"]:

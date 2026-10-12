@@ -14,6 +14,14 @@ uses the supplied OpenAI-compatible router (`openai/gpt-5.5`, medium reasoning),
 automatically selects the first discovered model/package entry, shows real progress,
 and offers the complete 17-section JSON. See [web demo setup and deployment](docs/web-demo.md).
 The API key stays on the server; it is never embedded in the page or committed.
+
+New optimized runs use `quality-v1`: source glyph repair, an initial inventory of
+application figures, independent reading and review per figure, source-grounded
+physical pin reconciliation, and conservative semantic coverage guards. Existing
+runs keep their original version. See [quality changes and before/after validation](docs/quality-v1.md).
+The [CY7C64225 live comparison](docs/quality-v1.md#cy7c64225-live-comparison-2026-10-12)
+records improved coverage and source values alongside remaining errors: all seven
+application figures are now included, while the output still requires review.
 Oversized reviews keep the fixed input cap and split by complete requirements,
 repeating the same source evidence in each part. Validated parts resume independently;
 final review completes only after all parts merge. The page distinguishes program

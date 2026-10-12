@@ -25,6 +25,7 @@ class Settings(BaseModel):
     reranker_model: str | None = None
     retrieval_local_only: bool = True
     workers: int = Field(default=2, ge=1, le=3)
+    quality: Literal["quality-v1", "baseline"] = "quality-v1"
     optimization: Literal["budget-v1", "baseline"] = "budget-v1"
     packet_token_budget: int = Field(default=6000, ge=1000)
     packet_image_token_budget: int = Field(default=6000, ge=1000)
@@ -52,6 +53,7 @@ class Settings(BaseModel):
             reranker_model=os.getenv("DATASHEET_RERANKER_MODEL") or None,
             retrieval_local_only=os.getenv("DATASHEET_RETRIEVAL_LOCAL_ONLY", "true").lower() != "false",
             workers=int(os.getenv("DATASHEET_WORKERS", "2")),
+            quality=os.getenv("DATASHEET_QUALITY", "quality-v1"),
             optimization=os.getenv("DATASHEET_OPTIMIZATION", "budget-v1"),
             packet_token_budget=int(os.getenv("DATASHEET_PACKET_TOKEN_BUDGET", "6000")),
             packet_image_token_budget=int(os.getenv("DATASHEET_PACKET_IMAGE_TOKEN_BUDGET", "6000")),

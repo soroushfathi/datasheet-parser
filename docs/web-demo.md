@@ -17,7 +17,7 @@ Public page: http://185.243.48.232:8095
    not necessarily distinct chip families. No second target is silently substituted.
 4. If the first entry is ambiguous, stop with an explanation. Otherwise create
    exactly one run and extract, blindly reread and review all 17 sections.
-5. Show incremental real events, elapsed wall time and the 51 inference-stage
+5. Show incremental real events, elapsed wall time and the 51 logical inference-stage
    states. These stage counts are processing progress, not extraction accuracy.
 6. Download the complete schema-validated JSON with evidence and unresolved issues.
    `needs_review` and `reviewed` retain their existing meanings; neither certifies
@@ -64,6 +64,13 @@ reasoning and output budget. Main progress still represents 51 logical stages;
 No evidence expansion or larger context cap is triggered. If one whole requirement
 with its frozen evidence still cannot fit, a typed `review_budget_exceeded` error
 reports the section, estimate and program cap before inference.
+
+New optimized runs use [the quality-v1 source workflow](quality-v1.md). Application
+figures are inventoried before inference and receive separate extraction, independent
+reading and review requests; events such as `extract:2:figure:3` show this detail.
+The main progress remains 51 logical stages and does not imply 51 physical API calls.
+Raw text repairs, pin normalization, semantic coverage and review reconciliation are
+auditable in result metadata. Earlier jobs retain their stored versions on resume.
 
 ## Local start
 
@@ -183,3 +190,29 @@ GridFS races and safe failure diagnostics. The complete suite passed **202 tests
 and Ruff passed.
 
 [Recovered live output](http://185.243.48.232:8095/?job=b756c7fa586a413ba560ef9091984d97)
+
+## Quality rerun of CY7C64225 (2026-10-12)
+
+The original PDF was freshly ingested using the repaired glyph/index contracts.
+The new job selected the same first target, `CY7C64225-28PVXC / 28-pin SSOP (PV)`,
+and completed all 51 logical stages using the same model/reasoning and worker count.
+JSON was downloaded through the live page and validated: 17 sections, the exact
+51 requirements, 283 claims, 201 issues, `needs_review`, no unreviewed sections.
+The completed page had no browser console errors/warnings; 474 offline tests and
+Ruff passed. Both port 8094 and port 8095 services remained active.
+
+Application figure coverage improved from 2 to 7, Table 7 temperature inequalities
+were repaired, the complete 17-value baud list was retained, and the Figure 3/4
+capacitor wiring was corrected. Total issues rose from 167 to 201 as more circuits
+were read and additional structural errors became visible. Fifty unknown-terminal
+findings and unresolved WAKE aliases remain; this is not a human-certified output
+or an aggregate accuracy score. The detailed before/after evidence and limitations
+are in [the quality comparison](quality-v1.md#cy7c64225-live-comparison-2026-10-12).
+
+The displayed 92:48 includes router failures, development pauses and targeted
+source rereads. It is not a clean latency benchmark. Recorded repeated gateway
+504 failures were recovered using complete-requirement review parts with the same
+frozen source, input cap, model and reasoning. Successful checkpoints were reused;
+the original job/output was not overwritten.
+
+[New CY7C64225 output](http://185.243.48.232:8095/?job=4b8a50b34bb54029980a9dc33d8231f8)

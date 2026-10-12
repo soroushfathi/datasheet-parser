@@ -16,7 +16,8 @@ def scoped_view(view, scope):
     return result
 
 
-def plan_review_batches(original, independent, requirement_ids, prepare, limit, section_id):
+def plan_review_batches(original, independent, requirement_ids, prepare, limit, section_id,
+                        *, max_requirements_per_part=None):
     """Preflight the entire plan before inference; singleton requirements are indivisible.
 
     prepare must repeat the same complete source packet for every partition. Splitting
@@ -24,6 +25,11 @@ def plan_review_batches(original, independent, requirement_ids, prepare, limit, 
     """
     if not requirement_ids or len(set(requirement_ids)) != len(requirement_ids):
         raise ValueError("Review batch requirements must be nonempty and unique")
+    if max_requirements_per_part is not None and (
+        not isinstance(max_requirements_per_part, int) or isinstance(max_requirements_per_part, bool)
+        or max_requirements_per_part < 1
+    ):
+        raise ValueError("max_requirements_per_part must be a positive integer or None")
     known = set(requirement_ids)
     for view in (original, independent):
         for key in ("claims", "findings"):
@@ -34,6 +40,9 @@ def plan_review_batches(original, independent, requirement_ids, prepare, limit, 
         raise ValueError("Review draft has duplicate original claim IDs")
 
     def partition(scope):
+        if max_requirements_per_part is not None and len(scope) > max_requirements_per_part:
+            return [part for offset in range(0, len(scope), max_requirements_per_part)
+                    for part in partition(scope[offset:offset + max_requirements_per_part])]
         original_part, independent_part = scoped_view(original, scope), scoped_view(independent, scope)
         request = prepare(original_part, independent_part, scope)
         if request["input_tokens_estimate"] <= limit:

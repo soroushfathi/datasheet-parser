@@ -1,0 +1,225 @@
+[
+  {
+    "id": "parse:p6",
+    "page": 6,
+    "kind": "page",
+    "text": "CY7C64225\nPin Configuration\n28-pin part pinout Description\nThe CY7C64225 USB-to-UART Bridge device is available in a 28-pin package as shown in Figure2. The pin description is listed in\nTable2.\nTable 2. 28-pin part pinout (SSOP)\nPin No. Name I/O Description Figure 2. CY7C64225 USB-UART Bridge Device\n1 GND Power Ground\n2 Tx_LED Output Active low, UART Tx_LED, max\ncurrent –20 mA\n3 SUSPEND Output Active low indicates USB is\nsuspended\n4 TxD Output UART Data Transmit, Output\n5 DTR Output Data Terminal Ready (DTR) Pin\n6 RESET Input No Connect (NC)\n7 VBUS Input Used for VBUS monitoring. This pin\nrequires a series resistor when\nconnected to VBUS. The\nrecommended values are in the range\nof 1 k–10 k.\n8 DSR Input Data Set Ready (DSR) pin\n13 GND Power USB Ground\n14 D+ USB USB D+ Line\n15 D– USB USB D– Line\n16 V Power Supply Voltage (3.3 V or 5 V)\nDD\n21 CTS Input Clear to Send (CTS) input,\nhandshake signal\n22 WAKE Input Active high on this pin, generates\nRemote Wake-Up signal on the Bus\n23 RxD Input UART Data Receive, Input\n24 RTS Output Request to Sent (RTS) output, hand-\nshake signal\n26 VCFG Output Active low indicates VBUS is detected\nand device is configured\n27 Rx_LED Output Active low, UART Rx_LED, max\ncurrent –20 mA\n28 V Power Supply Voltage. 3.3 V or 5 V\nDD\n9 NC NC No Connect\n10 NC NC No Connect\n11 NC NC No Connect\n12 NC NC No Connect\n17 NC NC No Connect\n18 NC NC No Connect\n19 NC NC No Connect\n20 NC NC No Connect\n25 NC NC No Connect\nDocument Number: 001-76294 Rev. *G Page 6 of 21"
+  },
+  {
+    "id": "parse:p6:t1",
+    "page": 6,
+    "kind": "table",
+    "rows": [
+      [
+        "Pin No.",
+        "Name",
+        "I/O",
+        "Description",
+        "Figure 2. CY7C64225 USB-UART Bridge Device"
+      ],
+      [
+        "1",
+        "GND",
+        "Power",
+        "Ground",
+        null
+      ],
+      [
+        "2",
+        "Tx_LED",
+        "Output",
+        "Active low, UART Tx_LED, max\ncurrent –20 mA",
+        null
+      ],
+      [
+        "3",
+        "SUSPEND",
+        "Output",
+        "Active low indicates USB is\nsuspended",
+        null
+      ],
+      [
+        "4",
+        "TxD",
+        "Output",
+        "UART Data Transmit, Output",
+        null
+      ],
+      [
+        "5",
+        "DTR",
+        "Output",
+        "Data Terminal Ready (DTR) Pin",
+        null
+      ],
+      [
+        "6",
+        "RESET",
+        "Input",
+        "No Connect (NC)",
+        null
+      ],
+      [
+        "7",
+        "VBUS",
+        "Input",
+        "Used for VBUS monitoring. This pin\nrequires a series resistor when\nconnected to VBUS. The\nrecommended values are in the range\nof 1 k–10 k.",
+        null
+      ],
+      [
+        "8",
+        "DSR",
+        "Input",
+        "Data Set Ready (DSR) pin",
+        null
+      ],
+      [
+        "13",
+        "GND",
+        "Power",
+        "USB Ground",
+        null
+      ],
+      [
+        "14",
+        "D+",
+        "USB",
+        "USB D+ Line",
+        null
+      ],
+      [
+        "15",
+        "D–",
+        "USB",
+        "USB D– Line",
+        null
+      ],
+      [
+        "16",
+        "V\nDD",
+        "Power",
+        "Supply Voltage (3.3 V or 5 V)",
+        null
+      ],
+      [
+        "21",
+        "CTS",
+        "Input",
+        "Clear to Send (CTS) input,\nhandshake signal",
+        null
+      ],
+      [
+        "22",
+        "WAKE",
+        "Input",
+        "Active high on this pin, generates\nRemote Wake-Up signal on the Bus",
+        null
+      ],
+      [
+        "23",
+        "RxD",
+        "Input",
+        "UART Data Receive, Input",
+        null
+      ],
+      [
+        "24",
+        "RTS",
+        "Output",
+        "Request to Sent (RTS) output, hand-\nshake signal",
+        null
+      ],
+      [
+        "26",
+        "VCFG",
+        "Output",
+        "Active low indicates VBUS is detected\nand device is configured",
+        null
+      ],
+      [
+        "27",
+        "Rx_LED",
+        "Output",
+        "Active low, UART Rx_LED, max\ncurrent –20 mA",
+        null
+      ],
+      [
+        "28",
+        "V\nDD",
+        "Power",
+        "Supply Voltage. 3.3 V or 5 V",
+        null
+      ],
+      [
+        "9",
+        "NC",
+        "NC",
+        "No Connect",
+        null
+      ],
+      [
+        "10",
+        "NC",
+        "NC",
+        "No Connect",
+        null
+      ],
+      [
+        "11",
+        "NC",
+        "NC",
+        "No Connect",
+        null
+      ],
+      [
+        "12",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "17",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "18",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "19",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "20",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "25",
+        "NC",
+        "NC",
+        "No Connect",
+        ""
+      ],
+      [
+        "",
+        null,
+        null,
+        null,
+        null
+      ]
+    ]
+  }
+]

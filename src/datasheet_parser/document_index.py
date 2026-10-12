@@ -7,15 +7,33 @@ from hashlib import sha256
 
 INDEX_VERSION = "structural-8"
 BOUNDED_INDEX_REVISION = "typed-local-headings-8"
+QUALITY_INDEX_REVISION = "source-headings-lists-1"
+BOUNDED_VERSIONS = {"structural-9", "structural-10"}
 REFERENCE = re.compile(r"\b(figure|fig\.?|table|section)\s+(\d+(?:[.-]\d+)*)", re.IGNORECASE)
 HEADING = re.compile(r"^\d+(?:\.\d+)*\s+[A-Z][A-Za-z ]{3,100}$")
 LOCAL_HEADING = re.compile(r"^\d+(?:\.\d+)*\s+[A-Z][A-Za-z]{2,}[ A-Za-z0-9/()–—-]{0,100}$")
 
 
 def _heading(text, version):
-    if version == "structural-9" and re.match(r"^\d+\s+(?:PINS?|MAX|MIN|TYP|REF)\b", text.strip()):
+    if version in BOUNDED_VERSIONS and re.match(r"^\d+\s+(?:PINS?|MAX|MIN|TYP|REF)\b", text.strip()):
         return None
-    return (LOCAL_HEADING if version == "structural-9" else HEADING).match(text.strip())
+    numeric = (LOCAL_HEADING if version in BOUNDED_VERSIONS else HEADING).match(text.strip())
+    if numeric or version != "structural-10":
+        return numeric
+    title = text.strip()
+    words = title.split()
+    connectors = {"and", "or", "to", "of", "the", "for", "with", "using", "by", "in"}
+    single = {"Applications", "Introduction", "Protection", "Regulator", "Oscillator", "Timing", "Overview"}
+    if (2 <= len(words) <= 12 or title in single) and len(title) <= 100 and all(
+        w.lower() in connectors or re.fullmatch(r"[A-Z][A-Za-z0-9/()–-]*", w) for w in words
+    ):
+        return re.match(r".+", title)
+    return None
+
+
+def _section_key(text):
+    numeric = re.match(r"\d+(?:\.\d+)*", text)
+    return numeric.group() if numeric else "title:" + text
 
 
 def references(text):
@@ -35,14 +53,14 @@ def _inside(line, table):
 
 
 def ensure_index(store, parse_id, *, version=INDEX_VERSION):
-    if version not in {INDEX_VERSION, "structural-9"}:
+    if version not in {INDEX_VERSION, *BOUNDED_VERSIONS}:
         raise ValueError(f"Unsupported structural index version: {version}")
     pages = sorted(store.find("pages", {"parse_id": parse_id}), key=lambda p: p["number"])
     regions = store.find("regions", {"parse_id": parse_id})
     source = sorted([(r["id"], r.get("text", ""), r.get("bbox")) for r in regions])
     digest_source = [version, source]
-    if version == "structural-9":
-        digest_source.append(BOUNDED_INDEX_REVISION)
+    if version in BOUNDED_VERSIONS:
+        digest_source.append(QUALITY_INDEX_REVISION if version == "structural-10" else BOUNDED_INDEX_REVISION)
     digest = sha256(json.dumps(digest_source, sort_keys=True).encode()).hexdigest()[:24]
     key = f"{parse_id}:{digest}"
     try:
@@ -61,7 +79,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
     def append(page, items, kind, context, visual=False):
         ordinal = len(chunks)
         local_heading, local_section = heading, section_key
-        if version == "structural-9" and kind != "visual":
+        if version in BOUNDED_VERSIONS and kind != "visual":
             boxes = [r["bbox"] for r in items if r.get("bbox")]
             top = min((b[1] for b in boxes), default=0)
             preceding = [
@@ -74,7 +92,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
             ]
             if preceding:
                 local_heading = max(preceding, key=lambda r: r["bbox"][1])["text"]
-                local_section = re.match(r"\d+", local_heading).group()
+                local_section = _section_key(local_heading)
             context = f"PDF page {page['number']}; heading candidate: {local_heading or 'unknown'}"
         chunks.append(
             {
@@ -106,7 +124,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
                 ),
             }
         )
-        if version == "structural-9":
+        if version in BOUNDED_VERSIONS:
             chunks[-1]["heading_candidate"] = local_heading
             if not chunks[-1]["package_hint"] and re.search(
                 r"PACKAGE VIEW|PACKAGE OUTLINE|BOARD LAYOUT|STENCIL DESIGN", page["text"]
@@ -128,7 +146,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
         headings = [r["text"] for r in lines if _heading(r["text"], version)]
         if headings:
             heading = headings[0]
-            section_key = re.match(r"\d+", heading).group()
+            section_key = _section_key(heading)
         if re.search(
             r"PACKAGE OPTION ADDENDUM|PACKAGE MATERIALS INFORMATION|PACKAGE OUTLINE|EXAMPLE BOARD LAYOUT",
             page["text"],
@@ -144,14 +162,15 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
             if any(_inside(line, table) for table in tables):
                 continue
             boundary = bool(_heading(line["text"], version))
-            if version == "structural-9":
+            if version in BOUNDED_VERSIONS:
                 # Separate source notes/captions from unrelated prose. The source line itself
                 # remains intact; no word/row is cut to achieve a token limit.
                 boundary |= bool(
                     re.match(r"^\s*(?:\(\d+\)|Notes?\b|Table\s+\d|Figure\s+\d)", line["text"], re.IGNORECASE)
                 )
             if group and (
-                size + len(line["text"]) > (1200 if version == "structural-9" else 2400) or boundary
+                (size + len(line["text"]) > (1200 if version == "structural-9" else 2400)
+                 and not (version == "structural-10" and group[-1]["text"].rstrip().endswith(","))) or boundary
             ):
                 append(page, group, "text", context)
                 group, size = [], 0
@@ -166,13 +185,13 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
         # A visual page anchor is essential for schematics/dimensions absent from text extraction.
         graphic_pattern = (
             r"^\s*(?:figure|fig\.?)\s+\d|block diagram|package\s+outline|example board layout|land pattern"
-            if version == "structural-9"
+            if version in BOUNDED_VERSIONS
             else r"\bfigure\s+\d|block diagram|package\s+outline|example board layout|land pattern"
         )
         graphical = page.get("requires_visual_read", False) or bool(
             re.search(graphic_pattern, page["text"], re.IGNORECASE | re.MULTILINE)
         )
-        if version == "structural-9" and "table of contents" in page["text"].lower():
+        if version in BOUNDED_VERSIONS and "table of contents" in page["text"].lower():
             graphical = page.get("requires_visual_read", False) or bool(
                 re.search(r"^\s*(?:figure|fig\.?)\s+\d", page["text"], re.IGNORECASE | re.MULTILINE)
             )
@@ -196,7 +215,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
     for chunk in chunks:
         for line in chunk["text"].splitlines():
             if _heading(line, version):
-                number = re.match(r"\d+(?:\.\d+)*", line.strip()).group()
+                number = _section_key(line.strip())
                 destinations[("section", number)].add(chunk["id"])
             if REFERENCE.match(line.strip()):
                 for ref in references(line):
@@ -219,7 +238,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
                 links.update(destinations[ref])
             else:
                 unresolved.append({"chunk_id": chunk["id"], "reference": list(ref)})
-        if version == "structural-9":
+        if version in BOUNDED_VERSIONS:
             # The typed pass below owns closure in this index version.
             continue
         # Conservative source-page closure: retain conditions, footnotes and captions with tables/figures.
@@ -247,8 +266,8 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
                     if re.search(r"^\s*\(\d+\)|^\s*Notes?\b", c["text"], re.MULTILINE | re.IGNORECASE)
                 )
         chunk["links"] = sorted(links - {chunk["id"]})
-    if version == "structural-9":
-        _typed_links(chunks, by_page, per_page, destinations, page_meta)
+    if version in BOUNDED_VERSIONS:
+        _typed_links(chunks, by_page, per_page, destinations, page_meta, version=version)
     manifest = {
         "id": key,
         "parse_id": parse_id,
@@ -259,8 +278,8 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
         "unresolved_references": unresolved,
         "source_digest": digest,
     }
-    if version == "structural-9":
-        manifest["algorithm_revision"] = BOUNDED_INDEX_REVISION
+    if version in BOUNDED_VERSIONS:
+        manifest["algorithm_revision"] = QUALITY_INDEX_REVISION if version == "structural-10" else BOUNDED_INDEX_REVISION
         manifest["unresolved_unknown_visual_pages"] = [
             p["number"] for p in pages if p.get("requires_visual_read", False)
         ]
@@ -269,7 +288,7 @@ def ensure_index(store, parse_id, *, version=INDEX_VERSION):
     return manifest, chunks
 
 
-def _typed_links(chunks, regions_by_page, per_page, destinations, pages):
+def _typed_links(chunks, regions_by_page, per_page, destinations, pages, *, version="structural-9"):
     """Source-scoped closure: condition/notes stay attached, references remain budgetable.
 
     These edges are heuristics with an explicit type, not semantic proof. Unlike the old
@@ -351,7 +370,8 @@ def _typed_links(chunks, regions_by_page, per_page, destinations, pages):
                     if other["kind"] == "text" and source_note.match(other["text"]):
                         link(other, "note_sibling", True)
             own_headings = {
-                line.strip() for line in chunk["text"].splitlines() if LOCAL_HEADING.match(line.strip())
+                line.strip() for line in chunk["text"].splitlines()
+                if (_heading(line, version) if version == "structural-10" else LOCAL_HEADING.match(line.strip()))
             }
             for other in per_page[chunk["page"]]:
                 if other["kind"] == "table" and other.get("heading_candidate", "").strip() in own_headings:

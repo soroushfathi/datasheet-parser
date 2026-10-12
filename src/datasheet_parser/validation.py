@@ -1,13 +1,39 @@
 """Deterministic structural checks do not certify source interpretation."""
 
+import re
 from itertools import pairwise
 
 from .models import SectionResult
 from .requirements import requirements
 
+_NC_STUB_MARKER = re.compile(r"(?<![a-z0-9])(?:nc|no[\s_-]*connect|unconnected|open)(?![a-z0-9])", re.IGNORECASE)
+_NC_POWER_LABEL = re.compile(
+    r"(?<![a-z0-9])(?:[a-z]*gnd[a-z0-9]*|ground|vcc[a-z0-9]*|vdd[a-z0-9]*|vss[a-z0-9]*|vbus|vin|power|supply)(?![a-z0-9])",
+    re.IGNORECASE,
+)
+_OPEN_OUTPUT = re.compile(r"(?<![a-z0-9])open[\s_-]*(?:drain|collector)(?![a-z0-9])", re.IGNORECASE)
+
+
+def _explicit_nc_stub(nets, node):
+    """A cited singleton NC marker is a disposition, not a physical connection.
+
+    A power label, open-drain output, additional terminal or second net can never
+    establish this exception. The original net object remains unchanged for audit.
+    """
+    memberships = [net for net in nets if node in net.nodes]
+    if len(memberships) != 1:
+        return False
+    net = memberships[0]
+    return bool(
+        set(net.nodes) == {node} and net.status == "supported" and net.evidence_ids
+        and _NC_STUB_MARKER.search(net.name) and not _NC_POWER_LABEL.search(net.name)
+        and not _OPEN_OUTPUT.search(net.name)
+    )
+
 
 def validate_section(
-    section: SectionResult, target_id: str, region_ids: set[str], allowed_evidence: set[str] | None = None
+    section: SectionResult, target_id: str, region_ids: set[str], allowed_evidence: set[str] | None = None,
+    *, coverage_uncertainty: dict | None = None, allow_explicit_nc_stub: bool = False,
 ) -> list[dict]:
     issues = []
 
@@ -36,7 +62,12 @@ def validate_section(
     if len(finding_ids) != len(set(finding_ids)) or set(finding_ids) != expected:
         issue("requirement_coverage", "Findings must cover each section requirement exactly once")
     for finding in section.findings:
-        if finding.status != "not_found":
+        uncertainty = (coverage_uncertainty or {}).get(finding.requirement_id, {})
+        derived_absence_uncertainty = (
+            finding.status == "ambiguous" and uncertainty.get("reported_status") == "not_found"
+            and uncertainty.get("effective_status") == "ambiguous"
+        )
+        if finding.status != "not_found" and not derived_absence_uncertainty:
             evidence(finding.evidence_ids, finding.requirement_id)
         if finding.status == "not_found" and not finding.reason:
             issue("absence_without_reason", finding.requirement_id)
@@ -65,7 +96,10 @@ def validate_section(
         q = claim.quantity
         if claim.status == "present" and not q and not (claim.value or claim.raw_value):
             issue("empty_present_claim", "Present claim has no value", claim.id)
-        if claim.kind == "quantity" and q is None:
+        # Absent/unreadable facts do not have a numeric value to structure. Their
+        # disposition and explanation are checked above; requiring a quantity
+        # here would report the expected absence as an independent data error.
+        if claim.kind == "quantity" and claim.status == "present" and q is None:
             issue("missing_quantity", "Quantity claim requires a structured quantity", claim.id)
         if q:
             values = [v for v in [q.minimum, q.typical, q.maximum] if v is not None]
@@ -116,7 +150,8 @@ def validate_section(
                     issue("terminal_in_two_nets", node)
                 memberships[node] = net.name
         for pad in circuit.explicitly_unconnected_pads:
-            if f"{circuit.ic_ref}.{pad}" in memberships:
+            node = f"{circuit.ic_ref}.{pad}"
+            if node in memberships and not (allow_explicit_nc_stub and _explicit_nc_stub(circuit.nets, node)):
                 issue("nc_connected", pad)
         for pad in circuit.unobserved_pads:
             if f"{circuit.ic_ref}.{pad}" in memberships:

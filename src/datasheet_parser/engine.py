@@ -269,6 +269,7 @@ class Engine(RetrievalWorkflow):
                 "scheduler_version": "dag-v1",
                 "packet_version": "budget-v1",
                 "contract_version": "compact-v2",
+                "quality_version": self.settings.quality,
             }
             if optimized else {}
         )
@@ -282,7 +283,7 @@ class Engine(RetrievalWorkflow):
         if optimized:
             retrieval_config.update(
                 packet_version="budget-v1",
-                index_version="structural-9",
+                index_version="structural-10" if self.settings.quality == "quality-v1" else "structural-9",
                 text_token_budget=self.settings.packet_token_budget,
                 image_token_budget=self.settings.packet_image_token_budget,
                 max_images=self.settings.packet_max_images,
@@ -775,19 +776,73 @@ class Engine(RetrievalWorkflow):
         sections = [SectionResult.model_validate(r["section"]) for r in records]
         regions = self.store.find("regions", {"parse_id": run["parse_id"]})
         known = {r["id"] for r in regions}
+        quality_audit = {}
+        restored_absences = {}
+        allowed_by_section = {r["section_id"]: set(r["supplied_region_ids"]) for r in records}
+        if run.get("quality_version") == "quality-v1":
+            from .coverage_uncertainty import reconcile_absence_coverage
+            from .netlist_normalization import normalize_circuit_pads, source_pin_inventory
+            from .quality_policy import semantic_postprocess
+
+            absence_audits = []
+            corrected_sections = []
+            for section, record in zip(sections, records, strict=True):
+                metrics = record.get("packet_metrics", {})
+                candidates = {}
+                if metrics.get("absence_coverage_uncertainty") and run.get("pipeline") == "retrieval-v2":
+                    _, retriever = self.retrieval_context(run)
+                    for req in metrics["absence_coverage_uncertainty"]:
+                        ids, _ = retriever.select(req, run["target"])
+                        candidates[req] = [retriever.by_id[cid] for cid in ids]
+                corrected, audit = reconcile_absence_coverage(section, metrics, candidates)
+                corrected_sections.append(corrected)
+                if audit["decisions"]:
+                    absence_audits.append({"section_id": section.section_id, **audit})
+                    restored_absences[section.section_id] = {d["requirement_id"] for d in audit["decisions"]}
+            sections = corrected_sections
+            by_id = {section.section_id: section for section in sections}
+            raw_pins = source_pin_inventory(regions, run["target"])
+            pin_allowlist = allowed_by_section[1] | allowed_by_section[2]
+            normalized = normalize_circuit_pads(by_id[2], by_id[1],
+                source_inventory=raw_pins, source_evidence_allowlist=pin_allowlist)
+            sections = [normalized.section if section.section_id == 2 else section for section in sections]
+            # The reconciliation explicitly introduces selected pin-table citations;
+            # authorize precisely those source proofs, not arbitrary document regions.
+            mapped_source = {rid for entry in normalized.provenance for rid in entry.get("evidence_ids", [])}
+            pin_proofs = {rid for pin in by_id[1].pins for rid in pin.evidence_ids}
+            pin_proofs.update(rid for pin in raw_pins for rid in pin["evidence_ids"])
+            allowed_by_section[2].update(mapped_source & known & pin_proofs & pin_allowlist)
+            semantic = semantic_postprocess(sections)
+            sections = semantic.sections
+            quality_audit = {"version": "quality-v1", "normalization": {
+                "version": normalized.version,
+                "provenance": normalized.provenance, "diagnostics": normalized.diagnostics},
+                "semantic_coverage": semantic.coverage, "semantic_diagnostics": semantic.diagnostics,
+                "semantic_provenance": semantic.provenance, "linked_review_diagnostics": [],
+                "absence_reconciliation": absence_audits}
         issues = [
             i
             for section, record in zip(sections, records, strict=True)
-            for i in validate_section(section, run["target"]["id"], known, set(record["supplied_region_ids"]))
+            for i in validate_section(section, run["target"]["id"], known,
+                allowed_by_section[section.section_id],
+                coverage_uncertainty=record.get("packet_metrics", {}).get("absence_coverage_uncertainty"),
+                allow_explicit_nc_stub=run.get("quality_version") == "quality-v1")
         ]
         issues.extend(validate_cross_sections(sections))
+        if quality_audit:
+            issues.extend(quality_audit["normalization"]["diagnostics"])
+            issues.extend(quality_audit["semantic_diagnostics"])
         if run.get("pipeline") == "retrieval-v2":
-            issues.extend(
-                i
-                for record in records
-                for i in record.get("validation", [])
-                if i["code"] in {"incomplete_visual_search", "unresolved_evidence_request"}
-            )
+            for record in records:
+                for diagnostic in record.get("validation", []):
+                    if diagnostic["code"] not in {"incomplete_visual_search", "unresolved_evidence_request"}:
+                        continue
+                    if diagnostic["code"] == "incomplete_visual_search" and record["section_id"] in restored_absences:
+                        remaining = set(diagnostic.get("requirements", [])) - restored_absences[record["section_id"]]
+                        if not remaining:
+                            continue
+                        diagnostic = {**diagnostic, "requirements": sorted(remaining)}
+                    issues.append(diagnostic)
         reviews = {r["section_id"]: r for r in self.store.find("reviews", {"run_id": run_id})}
         for section in sections:
             review = reviews.get(section.section_id)
@@ -797,8 +852,17 @@ class Engine(RetrievalWorkflow):
                 )
                 continue
             issues.extend({"section_id": section.section_id, **i} for i in review["issues"])
+            detailed_ids = set()
+            if quality_audit:
+                from .review_context import detailed_review_claim_ids
+                detailed_ids = detailed_review_claim_ids(review)
             for claim in section.claims:
                 if claim.status == "present" and claim.id not in review["supported_claim_ids"]:
+                    if claim.id in detailed_ids:
+                        quality_audit["linked_review_diagnostics"].append({
+                            "code": "unverified_claim", "claim_id": claim.id,
+                            "section_id": section.section_id, "linked_to": "detailed_review_issue"})
+                        continue
                     issues.append(
                         {
                             "code": "unverified_claim",
@@ -835,6 +899,11 @@ class Engine(RetrievalWorkflow):
                 "packet_version": run.get("packet_version", "exact-v1"),
                 "contract_version": run.get("contract_version", "exact-v1"),
                 "workers": run.get("workers", 1),
+                **({"quality_audit": quality_audit, "quality_version": run["quality_version"],
+                    "quality_repairs": run.get("quality_repairs", []),
+                    "review_reconciliation": {str(sid): row["review_reconciliation"]
+                        for sid, row in reviews.items() if row.get("review_reconciliation")}}
+                   if quality_audit else {}),
             },
         )
         self.store.put("runs", {**run, "status": result.status})

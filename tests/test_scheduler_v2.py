@@ -54,7 +54,8 @@ def test_new_runs_freeze_versions_and_budgets_without_changing_baseline(tmp_path
     )
     assert run["prompt_version"] == "3"
     assert run["workers"] == 2
-    assert run["retrieval_config"]["index_version"] == "structural-9"
+    assert run["retrieval_config"]["index_version"] == "structural-10"
+    assert run["quality_version"] == "quality-v1"
     assert run["retrieval_config"]["text_token_budget"] == 6000
     engine.settings.packet_token_budget = 1000
     engine.settings.workers = 3
