@@ -14,7 +14,7 @@ from typing import Annotated
 from uuid import uuid4
 
 import pdfplumber
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.formparsers import MultiPartException
@@ -78,7 +78,7 @@ class DemoJobs:
             if job["status"] in {"queued", "running"}:
                 self.queue.put(job["id"])
 
-    def submit(self, data, filename, pages):
+    def submit(self, data, filename, pages, *, fresh=False):
         with self.lock:
             if self.queue.full():
                 raise Full
@@ -90,6 +90,7 @@ class DemoJobs:
                 "updated_at": timestamp(), "stage": "queued", "sequence": 0,
                 "stages": {}, "target": None, "target_count": None,
                 "model": self.settings.model,
+                "benchmark_namespace":identifier if fresh else None,
             })
             self.queue.put_nowait(identifier)
             return identifier
@@ -102,7 +103,9 @@ class DemoJobs:
     @staticmethod
     def can_resume(job):
         if (job["status"] == "failed" and not job.get("run_id")
-                and job.get("parse_id") and job.get("failure_code") == "no_model_targets"):
+                and job.get("parse_id") and job.get("failure_code") in {
+                    "no_model_targets", "gateway_error", "transport_error", "routing_timeout",
+                    "request_deadline_exceeded", "usage_or_rate_limit", "output_validation_error"}):
             return True
         code = (job.get("target") or {}).get("ordering_code") or ""
         return (job["status"] == "failed" and bool(job.get("run_id"))
@@ -142,14 +145,20 @@ class DemoJobs:
         keys = {"id", "filename", "page_count", "status", "created_at", "started_at", "finished_at",
                 "stage", "sequence", "stages", "target", "target_count", "model", "summary", "error",
                 "failure_code", "failure_details", "failed_stage"}
+        keys.add("attempt_started_at")
         partial = []
         if job.get("run_id"):
             for record in sorted(self.store.find("results", {"run_id": job["run_id"]}),
                                  key=lambda r: r["section_id"]):
                 section = record["section"]
+                try:
+                    review_method = self.store.get("reviews", f"{job['run_id']}:{section['section_id']}").get("review_method", "source_review")
+                except KeyError:
+                    review_method = "pending"
                 partial.append({"section_id": section["section_id"], "status": section["status"],
                     "claims": len(section["claims"]),
-                    "reviewed": job["stages"].get(f"review:{section['section_id']}") == "completed",
+                    "review_method": review_method,
+                    "reviewed": job["stages"].get(f"review:{section['section_id']}") == "completed" and review_method not in {"skipped_no_source","declined_source_inspection"},
                     "preview": [{"parameter": c["parameter"], "value": c["raw_value"] or c["value"] or "—"}
                                 for c in section["claims"][:3]]})
         return {**{k: v for k, v in job.items() if k in keys}, "partial_sections": partial,
@@ -192,9 +201,20 @@ class DemoJobs:
 
     def run(self, identifier):
         job = self.store.get("demo_jobs", identifier)
-        self.update(identifier, status="running", started_at=job.get("started_at", timestamp()))
+        self.update(identifier, status="running", started_at=job.get("started_at", timestamp()),
+                    attempt_started_at=timestamp(),
+                    **({"model":self.settings.model} if not job.get("run_id") else {}))
         callback = lambda message: self.event(identifier, message)
         engine = self.engine_factory(callback)
+        if job.get("run_id") and isinstance(engine, Engine):
+            frozen = self.store.get("runs", job["run_id"])
+            settings = engine.settings.model_copy(update={
+                k:frozen[k] for k in ("provider", "model", "reasoning")})
+            if (engine.settings.provider,engine.settings.model,engine.settings.reasoning) != (
+                    settings.provider,settings.model,settings.reasoning):
+                # A new demo default cannot silently change an existing run's
+                # model or mix checkpoints from different model contracts.
+                engine = Engine(self.store,make_provider(settings),settings,callback)
         parse_id = job.get("parse_id")
         if not parse_id:
             self.event(identifier, "ingest: started")
@@ -202,7 +222,8 @@ class DemoJobs:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(self.store.read_artifact(job["upload_id"]))
             try:
-                parse_id = ingest(path, self.store, callback)
+                parse_id = ingest(path, self.store, callback,
+                    **({"namespace":job["benchmark_namespace"]} if job.get("benchmark_namespace") else {}))
             finally:
                 path.unlink(missing_ok=True)
             self.update(identifier, parse_id=parse_id)
@@ -288,7 +309,7 @@ def create_app(store=None, settings=None, jobs=None, static_dir=None):
             "default-src 'self'; img-src 'self' data:; style-src 'self'; "
             "script-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
         )
-        if request.url.path.startswith("/api/"):
+        if request.url.path.startswith("/api/") or request.url.path in {"/", "/demo.js", "/demo.css"}:
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -302,7 +323,8 @@ def create_app(store=None, settings=None, jobs=None, static_dir=None):
                 "sections": [{"id": sid, "name": section[0]} for sid, section in SECTIONS.items()]}
 
     @app.post("/api/jobs", status_code=202)
-    def upload(file: Annotated[UploadFile, File()]):
+    def upload(file: Annotated[UploadFile, File()], fresh: bool = Query(default=False),
+               fresh_run: Annotated[bool, Form()] = False):
         try:
             data = file.file.read(MAX_UPLOAD + 1)
             if len(data) > MAX_UPLOAD:
@@ -313,7 +335,7 @@ def create_app(store=None, settings=None, jobs=None, static_dir=None):
                 raise HTTPException(400, str(error)) from error
             filename = Path((file.filename or "datasheet.pdf").replace("\\", "/")).name[:200]
             try:
-                identifier = jobs.submit(data, filename, pages)
+                identifier = jobs.submit(data, filename, pages, **({"fresh":True} if fresh or fresh_run else {}))
             except Full as error:
                 raise HTTPException(429, "صف آزمایش پر است؛ چند دقیقه بعد دوباره امتحان کن.") from error
             return {"id": identifier}

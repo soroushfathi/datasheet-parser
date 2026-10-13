@@ -11,12 +11,13 @@ from pathlib import Path
 from threading import local
 from typing import TypedDict
 
+from jsonschema.exceptions import ValidationError as JSONSchemaError
 from langgraph.graph import END, START, StateGraph
 
 from .config import Settings
 from .errors import failure_diagnostics
 from .models import Catalog, EvidenceMap, ExtractionResult, Review, SectionResult, Target
-from .providers import LLMRequest, PendingResponse, make_provider, strict_schema
+from .providers import LLMRequest, PendingResponse, ProviderError, make_provider, strict_schema
 from .requirements import KEYWORDS, SECTIONS, requirements
 from .retrieval_workflow import RetrievalWorkflow
 from .store import Store, materialize
@@ -83,6 +84,7 @@ class Engine(RetrievalWorkflow):
             fingerprint = request.fingerprint(self.settings.model, self.settings.reasoning)
             checkpoint_id = sha256(f"{run_id}:{stage}:{fingerprint}".encode()).hexdigest()
             checkpoint = self.settings.work_dir / "checkpoints" / f"{checkpoint_id}.json"
+            self._last_checkpoint = (run_id, stage, checkpoint)
             if checkpoint.exists():
                 saved = json.loads(checkpoint.read_text(encoding="utf-8"))
                 response = saved["response"]
@@ -94,6 +96,8 @@ class Engine(RetrievalWorkflow):
                     "usage": None,
                 }
             else:
+                self.provider.progress = lambda status, **fields: self.event(
+                    run_id, stage, status, kind="llm", **fields)
                 response = self.provider.generate(request)
             parsed = model.model_validate(response)
             record = getattr(self.provider, "last_record", {})
@@ -152,6 +156,74 @@ class Engine(RetrievalWorkflow):
                 telemetry={k: v for k, v in record.items() if k != "folder"},
             )
             raise
+
+    def validated_call(self, run_id, stage, model, prompt, images, *, validate,
+                       request_metrics=None, output_budget=None):
+        """Archive semantic rejections and permit one source-identical correction."""
+        serialized = POLICY + prompt + (
+            f"\nOutput token target: {output_budget}. Be concise; preserve facts and conditions." if output_budget else "")
+        fingerprint = LLMRequest(stage,serialized,strict_schema(model),images,output_budget=output_budget).fingerprint(
+            self.settings.model,self.settings.reasoning)
+        identifier = sha256(f"{run_id}:{stage}:{fingerprint}".encode()).hexdigest()
+        folder = self.settings.work_dir / "checkpoints"
+        # A later validator can explicitly recognize a previously rejected refusal.
+        # Same fingerprint + full semantic revalidation are both mandatory; raw
+        # unsupplied citations or changed evidence are never accepted on this path.
+        for candidate in sorted((folder/"rejected").glob(f"{identifier}.*.json"),reverse=True):
+            saved = json.loads(candidate.read_text(encoding="utf-8"))
+            try:
+                accepted = validate(model.model_validate(saved["response"]))
+            except ValueError:
+                continue
+            record = {**saved["record"],"recovered":True,"recovery_source":str(candidate),
+                      "elapsed_seconds":0,"usage":None,"semantic_revalidated":True}
+            self.provider.last_record = record
+            saved["record"] = record
+            (folder/f"{identifier}.json").write_text(json.dumps(saved,ensure_ascii=False),encoding="utf-8")
+            self.event(run_id,stage,"completed",kind="code",recovery="semantic_revalidated")
+            return accepted
+        started = time.monotonic()
+        for attempt in range(2):
+            if self.settings.llm_stage_deadline:
+                remaining = self.settings.llm_stage_deadline - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise ProviderError("Semantic request wall budget exhausted", code="request_deadline_exceeded",retryable=True)
+                request_metrics = {**(request_metrics or {}), "wall_deadline_seconds":remaining}
+            try:
+                response = self.call(run_id, stage, model, prompt, images,
+                                     request_metrics=request_metrics, output_budget=output_budget)
+                accepted = validate(response)
+                self.event(run_id, stage + ":validated", "completed", kind="code")
+                return accepted
+            except (ValueError, JSONSchemaError, ProviderError) as error:
+                if isinstance(error, ProviderError) and not isinstance(error.__cause__, JSONSchemaError):
+                    raise  # Network/auth/budget errors retain their transport handling.
+                saved = getattr(self, "_last_checkpoint", None)
+                if saved and saved[:2] == (run_id, stage):
+                    checkpoint = saved[2]
+                    if checkpoint.exists():
+                        archive = checkpoint.parent / "rejected"
+                        archive.mkdir(exist_ok=True)
+                        checkpoint.replace(archive / f"{checkpoint.stem}.{uuid.uuid4().hex}.json")
+                self.event(run_id, stage + ":semantic", "failed", kind="code",
+                           semantic_attempt=attempt + 1, diagnostics=failure_diagnostics(error, stage))
+                if attempt:
+                    raise
+                prompt += (
+                    "\nSEMANTIC_CORRECTION: Previous response failed source/claim-reference checks. "
+                    "Return a complete response using ONLY the supplied source aliases and original "
+                    "claim IDs. Requirement IDs are NOT claim IDs. Independent-reader errors use "
+                    "issue.claim_id=null. With no original claims, supported_claim_ids must be []. "
+                    "Target identity metadata is not source evidence. Never invent a "
+                    "reviewed region or support when evidence is absent. Source packet is unchanged."
+                )
+                if request_metrics and request_metrics.get("request_token_budget"):
+                    from .token_budget import request_input_metrics
+                    serialized = POLICY + prompt + (
+                        f"\nOutput token target: {output_budget}. Be concise; preserve facts and conditions."
+                        if output_budget else "")
+                    if request_input_metrics(serialized, strict_schema(model), images, model=self.settings.model)["input_tokens_estimate"] > request_metrics["request_token_budget"]:
+                        raise
 
     def pages(self, parse_id):
         if self.store.get("parses", parse_id)["status"] != "complete":
@@ -317,6 +389,7 @@ class Engine(RetrievalWorkflow):
                 "workers": self.settings.workers if self.settings.pipeline == "retrieval-v2" else 1,
                 "retrieval_config": retrieval_config,
                 "review_policy": "independent_then_compare",
+                "failure_isolation": "section-v1" if self.settings.isolate_stage_failures else "fail-fast",
             },
         )
         return run_id
@@ -677,6 +750,8 @@ class Engine(RetrievalWorkflow):
         failure = None
         primary_failure = None
         secondary_failures = []
+        failed_stages = set()
+        isolate = run.get("failure_isolation") == "section-v1"
         executed = 0
         try:
             with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -697,6 +772,11 @@ class Engine(RetrievalWorkflow):
                         executed += 1
                     if not pending:
                         if todo:
+                            if isolate and failed_stages:
+                                for blocked in todo:
+                                    self.event(run["id"], f"{blocked.role}:{blocked.section_id}", "blocked", kind="code")
+                                todo.clear()
+                                break
                             raise RuntimeError("Stage dependencies cannot be satisfied")
                         break
                     finished, _ = wait(pending, return_when=FIRST_COMPLETED)
@@ -707,7 +787,11 @@ class Engine(RetrievalWorkflow):
                             future.result()
                             completed.add(stage)
                         except Exception as error:  # noqa: BLE001 -- persist/drain any model-stage failure
+                            failed_stages.add(stage)
                             diagnosis = failure_diagnostics(error, f"{stage.role}:{stage.section_id}")
+                            if diagnosis["code"] not in {"validation_error", "output_validation_error",
+                                    "request_deadline_exceeded", "gateway_error", "transport_error", "incomplete_response"}:
+                                isolate = False
                             if failure is None:
                                 failure = error
                                 primary_failure = diagnosis
@@ -715,7 +799,7 @@ class Engine(RetrievalWorkflow):
                                 error._datasheet_stage = diagnosis["stage"]
                             else:
                                 secondary_failures.append(diagnosis)
-                    if failure:
+                    if failure and not isolate:
                         # No submission after failure. The executor waits for the bounded in-flight set.
                         for future, stage in list(pending.items()):
                             try:
@@ -828,6 +912,10 @@ class Engine(RetrievalWorkflow):
                 "semantic_coverage": semantic.coverage, "semantic_diagnostics": semantic.diagnostics,
                 "semantic_provenance": semantic.provenance, "linked_review_diagnostics": [],
                 "absence_reconciliation": absence_audits}
+        numeric_audit = []
+        if run.get("quality_version") == "quality-v1":
+            from .numeric_source_guard import guard_numeric_sources
+            numeric_audit = guard_numeric_sources(sections,regions,allowed_by_section)
         issues = [
             i
             for section, record in zip(sections, records, strict=True)
@@ -837,6 +925,7 @@ class Engine(RetrievalWorkflow):
                 allow_explicit_nc_stub=run.get("quality_version") == "quality-v1")
         ]
         issues.extend(validate_cross_sections(sections))
+        issues.extend({k:v for k,v in row.items() if k != "original_model_claim"} for row in numeric_audit)
         if quality_audit:
             issues.extend(quality_audit["normalization"]["diagnostics"])
             issues.extend(quality_audit["semantic_diagnostics"])
@@ -907,6 +996,11 @@ class Engine(RetrievalWorkflow):
                 "packet_version": run.get("packet_version", "exact-v1"),
                 "contract_version": run.get("contract_version", "exact-v1"),
                 "workers": run.get("workers", 1),
+                "review_methods": {str(sid): row.get("review_method", "source_review")
+                                   for sid, row in reviews.items()},
+                "declined_source_reviews": {str(sid): row["raw_declined_review"]
+                                            for sid,row in reviews.items() if row.get("raw_declined_review") is not None},
+                "numeric_source_audit":numeric_audit,
                 **({"quality_audit": quality_audit, "quality_version": run["quality_version"],
                     "quality_repairs": run.get("quality_repairs", []),
                     "review_reconciliation": {str(sid): row["review_reconciliation"]

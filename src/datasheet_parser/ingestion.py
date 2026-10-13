@@ -14,7 +14,7 @@ from .pdf_text import TEXT_REPAIR_VERSION, prepare_page, repair_metadata
 from .store import Store
 
 
-def ingest(path: Path, store: Store, progress=lambda text: None) -> str:
+def ingest(path: Path, store: Store, progress=lambda text: None, *, namespace=None) -> str:
     data = path.read_bytes()
     doc_id = sha256(data).hexdigest()
     config = {
@@ -25,6 +25,8 @@ def ingest(path: Path, store: Store, progress=lambda text: None) -> str:
         "contract": "regions-2",
         "text_repair": TEXT_REPAIR_VERSION,
     }
+    if namespace is not None:
+        config["benchmark_namespace"] = namespace
     parse_id = sha256((doc_id + json.dumps(config, sort_keys=True)).encode()).hexdigest()[:24]
     try:
         if store.get("parses", parse_id)["status"] == "complete":

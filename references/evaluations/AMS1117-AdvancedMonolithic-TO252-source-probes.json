@@ -1,0 +1,294 @@
+{
+  "version": "ams1117-advanced-monolithic-to252-probes-1",
+  "scope": "Visually source-audited presence probes plus manual role/conditions/connectivity checks; not a complete human gold standard or accuracy percentage",
+  "source_sha256": "189a2651878a87d590b768eaa9b44217a3fdf460352ce6ecaff127221282a3f0",
+  "target": {
+    "manufacturer": "Advanced Monolithic Systems, Inc.",
+    "part_number": "AMS1117",
+    "ordering_code": "AMS1117CD",
+    "package_name": "TO-252 (D)"
+  },
+  "source_pages_visually_checked": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "numeric_probes": [
+    {
+      "id": "absolute_vin",
+      "page": 2,
+      "section": 3,
+      "parameter": "input|VIN",
+      "value": 15,
+      "unit": "V",
+      "expected_role": "maximum",
+      "note": "Absolute maximum only; not recommended operation"
+    },
+    {
+      "id": "storage_low",
+      "page": 2,
+      "section": 3,
+      "parameter": "storage",
+      "value": -65,
+      "unit": "°C",
+      "expected_role": "minimum"
+    },
+    {
+      "id": "storage_high",
+      "page": 2,
+      "section": 3,
+      "parameter": "storage",
+      "value": 150,
+      "unit": "°C",
+      "expected_role": "maximum"
+    },
+    {
+      "id": "junction_low",
+      "page": 1,
+      "section": 4,
+      "parameter": "junction|TJ",
+      "value": -40,
+      "unit": "°C",
+      "expected_role": "minimum",
+      "note": "Operating junction range in the ordering table, not an ambient range or inferred grade"
+    },
+    {
+      "id": "junction_high",
+      "page": 1,
+      "section": 4,
+      "parameter": "junction|TJ",
+      "value": 125,
+      "unit": "°C",
+      "expected_role": "maximum",
+      "note": "Operating junction range in the ordering table, not an ambient range or inferred grade"
+    },
+    {
+      "id": "theta_ja_to252",
+      "page": 2,
+      "section": 11,
+      "parameter": "ambient|θJA|thermal",
+      "value": 80,
+      "unit": "°C/W",
+      "note": "TO-252 specific, mounting conditions matter"
+    },
+    {
+      "id": "theta_jc",
+      "page": 3,
+      "section": 11,
+      "parameter": "case|θJC|thermal",
+      "value": 15,
+      "unit": "°C/W",
+      "expected_role": "maximum"
+    },
+    {
+      "id": "solder_temp",
+      "page": 2,
+      "section": 17,
+      "parameter": "lead|solder",
+      "value": 265,
+      "unit": "°C",
+      "condition": "25",
+      "note": "25 seconds, not reflow profile"
+    },
+    {
+      "id": "reference_typ",
+      "page": 2,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.25,
+      "unit": "V",
+      "expected_role": "typical",
+      "note": "Adjustable AMS1117, IOUT=10mA; differential 1.5..12V"
+    },
+    {
+      "id": "reference_room_min",
+      "page": 2,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.232,
+      "unit": "V",
+      "expected_role": "minimum",
+      "note": "Room-temperature row"
+    },
+    {
+      "id": "reference_room_max",
+      "page": 2,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.268,
+      "unit": "V",
+      "expected_role": "maximum",
+      "note": "Room-temperature row"
+    },
+    {
+      "id": "reference_full_min",
+      "page": 2,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.2125,
+      "unit": "V",
+      "expected_role": "minimum",
+      "note": "Bold full operating-temperature row"
+    },
+    {
+      "id": "reference_full_max",
+      "page": 2,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.2875,
+      "unit": "V",
+      "expected_role": "maximum",
+      "note": "Bold full operating-temperature row"
+    },
+    {
+      "id": "minimum_load_typ",
+      "page": 3,
+      "section": 9,
+      "parameter": "minimum.*(?:load|current)|load.*current",
+      "value": 5,
+      "unit": "mA",
+      "expected_role": "typical",
+      "note": "Name minimum load does NOT imply a MIN column"
+    },
+    {
+      "id": "minimum_load_max",
+      "page": 3,
+      "section": 9,
+      "parameter": "minimum.*(?:load|current)|load.*current",
+      "value": 10,
+      "unit": "mA",
+      "expected_role": "maximum"
+    },
+    {
+      "id": "adjust_current_typ",
+      "page": 3,
+      "section": 9,
+      "parameter": "adjust.*current|IADJ",
+      "value": 55,
+      "unit": "µA",
+      "expected_role": "typical"
+    },
+    {
+      "id": "adjust_current_full_max",
+      "page": 3,
+      "section": 9,
+      "parameter": "adjust.*current|IADJ",
+      "value": 120,
+      "unit": "µA",
+      "expected_role": "maximum",
+      "note": "Bold full-temperature specification"
+    },
+    {
+      "id": "psrr_min",
+      "page": 3,
+      "section": 9,
+      "parameter": "ripple|PSRR",
+      "value": 60,
+      "unit": "dB",
+      "expected_role": "minimum",
+      "condition": "120"
+    },
+    {
+      "id": "psrr_typ",
+      "page": 3,
+      "section": 9,
+      "parameter": "ripple|PSRR",
+      "value": 75,
+      "unit": "dB",
+      "expected_role": "typical",
+      "condition": "120"
+    },
+    {
+      "id": "thermal_shutdown",
+      "page": 4,
+      "section": 13,
+      "parameter": "thermal|shutdown",
+      "value": 165,
+      "unit": "°C",
+      "note": "Senses point; not max operating TJ"
+    },
+    {
+      "id": "output_capacitor",
+      "page": 4,
+      "section": 6,
+      "parameter": "output|capacitor|stability",
+      "value": 22,
+      "unit": "µF",
+      "condition": "tantalum"
+    },
+    {
+      "id": "to252_body_width_min",
+      "page": 7,
+      "section": 7,
+      "parameter": "width|horizontal|body|dimension",
+      "value": 6.48,
+      "unit": "mm",
+      "expected_role": "minimum"
+    },
+    {
+      "id": "to252_body_width_max",
+      "page": 7,
+      "section": 7,
+      "parameter": "width|horizontal|body|dimension",
+      "value": 6.73,
+      "unit": "mm",
+      "expected_role": "maximum"
+    }
+  ],
+  "manual_probes": [
+    {
+      "id": "catalog",
+      "page": 1,
+      "expected": "21 explicit entries, ordering row order with TO252 first; first AMS1117CD, TO-252 (D), adjustable. Junction operating temperature is not an inferred ordering grade."
+    },
+    {
+      "id": "pins",
+      "page": 1,
+      "expected": "1=GND/ADJ, 2=VOUT, 3=VIN; TO252 front view and tab=output. No SO8 NC pins copied."
+    },
+    {
+      "id": "circuit_edges",
+      "page": 4,
+      "expected": "R1 OUT-ADJ, R2 ADJ-GND; CADJ 10uF, COUT 22uF; D1 OUT-IN protection. Physical mapping only if observed; no invented resistor values."
+    },
+    {
+      "id": "adjustable_formula",
+      "page": 4,
+      "expected": "VOUT=VREF*(1+R2/R1)+IADJ*R2; figure IADJ 50uA distinct from table typical 55uA."
+    },
+    {
+      "id": "variant_applicability",
+      "page": 3,
+      "expected": "Fixed-suffix-only dropout/current-limit/quiescent table rows must not become unqualified adjustable guarantees."
+    },
+    {
+      "id": "noise_frequency",
+      "page": 3,
+      "expected": "10Hz..10kHz is output-noise test bandwidth; ripple rejection 120Hz is a condition. Neither implies clocks or timing interfaces."
+    },
+    {
+      "id": "pcb_thermal",
+      "page": 5,
+      "expected": "Copper-dependent thetaJA values55/55/65/80/60/65 do not replace TO252 table thetaJA80 without their conditions."
+    },
+    {
+      "id": "performance_plots",
+      "page": 6,
+      "expected": "Six real plots; typical curves are not guaranteed numeric limits."
+    },
+    {
+      "id": "mechanical",
+      "page": 7,
+      "expected": "TO252 dimensions only; inches(mm) pairs, distinguish body dimensions and overall span. SO8 p8 and SOT223 dimensions not applied."
+    }
+  ],
+  "limits": [
+    "The presence matcher does not evaluate expected_role: verify min/typ/max and room/full-temperature qualifiers manually.",
+    "This PDF differs from UMW AMS1117; its results cannot be scored with the UMW probes."
+  ]
+}

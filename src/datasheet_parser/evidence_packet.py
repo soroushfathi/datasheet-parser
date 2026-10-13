@@ -29,6 +29,10 @@ class EvidencePacket:
             alias = value.strip() if isinstance(value, str) else value
             if isinstance(alias, str) and re.fullmatch(r"\[e\d+\]", alias):
                 alias = alias[1:-1]
+            # Exact canonical compatibility is limited to this supplied packet,
+            # never the document's global region inventory or target provenance.
+            if isinstance(alias, str) and alias in self.allowed:
+                return alias
             if not isinstance(alias, str) or alias not in self.aliases:
                 raise ValueError(f"Unknown or unsupplied evidence alias at {path}: {value!r}")
             return self.aliases[alias]

@@ -53,7 +53,7 @@ def failure_diagnostics(error, stage=None):
     status_error = next((e for e in chain if isinstance(e, APIStatusError)), None)
     network_failure = (any(isinstance(e, (APIConnectionError, APITimeoutError, httpx.TransportError))
                            for e in chain) or
-                       bool(provider and provider.code in {"gateway_error", "transport_error", "routing_timeout"}))
+                       bool(provider and provider.code in {"gateway_error", "transport_error", "routing_timeout", "request_deadline_exceeded"}))
     if any(isinstance(e, NoTargetsError) for e in chain):
         code, details = "no_model_targets", {"target_count": 0}
         stage = stage or "discover"
@@ -72,6 +72,7 @@ def failure_diagnostics(error, stage=None):
         allowed = {"provider_error", "request_budget_exceeded", "process_timeout", "gateway_error",
                    "incomplete_response", "usage_or_rate_limit", "authentication_failed", "routing_timeout",
                    "transport_error"}
+        allowed.add("request_deadline_exceeded")
         code = provider.code if provider.code in allowed else "provider_error"
         details["retryable"] = bool(provider.retryable)
     elif status_error or network_failure:
@@ -99,6 +100,7 @@ def public_failure_message(failure):
     stage = failure.get("stage")
     prefix = f"مرحلهٔ {stage}: " if stage else ""
     messages = {
+        "request_deadline_exceeded": "درخواست مدل از سقف زمانی کل عبور کرد؛ اتصال بسته شد و مراحل تکمیل‌شده محفوظ‌اند. اجرای کامل هنوز آماده نیست.",
         "no_model_targets": "مرحلهٔ شناسایی، هیچ ترکیب مدل و پکیجی برنگرداند؛ این خطای اتصال یا قالب JSON نیست. با ادامهٔ اجرا، شناسایی دوباره انجام می‌شود؛ کد سفارش نامشخص به‌تنهایی مانع انتخاب مدل و پکیج نیست.",
         "request_budget_exceeded": "ورودی درخواست از سقف توکن تنظیم‌شده در برنامه بیشتر است؛ این خطا قبل از تماس با مدل رخ داده است.",
         "storage_error": "ذخیره یا خواندن داده‌ها ناموفق بود؛ اتصال پایگاه داده و فایل‌های سرور باید بررسی شود.",

@@ -107,7 +107,14 @@ def test_empty_discovery_has_specific_failure_not_validation_error(setup):
     ("no_model_targets", True, True),
     ("no_model_targets", False, False),
     ("validation_error", True, False),
-    ("output_validation_error", True, False),
+    ("output_validation_error", True, True),
+    ("gateway_error", True, True),
+    ("request_deadline_exceeded", True, True),
+    ("usage_or_rate_limit", True, True),
+    ("transport_error", True, True),
+    ("gateway_error", False, False),
+    ("authentication_failed", True, False),
+    ("request_budget_exceeded", True, False),
 ])
 def test_discovery_resume_requires_specific_failure_and_saved_parse(setup, code, has_parse, resumable):
     store, settings, jobs = setup
@@ -122,6 +129,38 @@ def test_discovery_resume_requires_specific_failure_and_saved_parse(setup, code,
     if resumable:
         assert store.get("demo_jobs", identifier)["parse_id"] == "parse"
         assert jobs.queue.get_nowait() == identifier
+
+
+def test_model_migration_does_not_mix_existing_run_providers(setup, monkeypatch):
+    from types import SimpleNamespace
+    store, settings, jobs = setup
+    settings.model="cx/gpt-6-sol"
+    identifier=jobs.submit(b"fixture", "x.pdf",1)
+    jobs.queue.get_nowait()
+    jobs.update(identifier, model="openai/gpt-5.5", parse_id="saved",run_id="old")
+    store.put("runs",{"id":"old","provider":"openai-chat","model":"openai/gpt-5.5","reasoning":"medium"})
+    seen=[]
+    monkeypatch.setattr(web_demo,"make_provider",lambda s: (s.model,s.reasoning))
+    monkeypatch.setattr(Engine,"resume",lambda self,*args,**kwargs: seen.append(
+        (self.settings.model,self.settings.reasoning,self.provider)))
+    result={"sections":[],"issues":[],"status":"needs_review"}
+    monkeypatch.setattr(Engine,"export",lambda *args: SimpleNamespace(model_dump=lambda **kwargs:result))
+    jobs.run(identifier)
+    assert seen==[("openai/gpt-5.5","medium",("openai/gpt-5.5","medium"))]
+    assert jobs.snapshot(identifier)["model"]=="openai/gpt-5.5"
+
+
+def test_pre_run_recovery_displays_current_model(setup):
+    _store, settings, jobs=setup
+    identifier=jobs.submit(b"fixture","x.pdf",1)
+    jobs.update(identifier,model="previous",parse_id="saved")
+    class Discovery:
+        def discover(self,*args,**kwargs):
+            raise NoTargetsError()
+    jobs.engine_factory=lambda callback:Discovery()
+    with pytest.raises(NoTargetsError):
+        jobs.run(identifier)
+    assert jobs.snapshot(identifier)["model"]==settings.model
 
 
 def test_first_target_notice_and_only_one_run(setup):
@@ -234,6 +273,19 @@ def test_queue_limit_and_api_upload_normalizes_filename(setup, monkeypatch):
         job = store.get("demo_jobs", r.json()["id"])
         assert job["filename"] == "secret.pdf"
     assert client.post("/api/jobs", files={"file": ("x.pdf", b"fixture")}).status_code == 429
+
+
+@pytest.mark.parametrize("use_body",[False,True])
+def test_fresh_benchmark_upload_records_unique_parse_namespace(setup,monkeypatch,use_body):
+    store,settings,jobs=setup
+    monkeypatch.setattr("datasheet_parser.web_demo.validate_pdf",lambda data:1)
+    client=TestClient(create_app(store,settings,jobs))
+    first=client.post("/api/jobs" if use_body else "/api/jobs?fresh=true",
+        data={"fresh_run":"true"} if use_body else {},
+        files={"file":("x.pdf",b"fixture","application/pdf")}).json()["id"]
+    second=client.post("/api/jobs",files={"file":("x.pdf",b"fixture","application/pdf")}).json()["id"]
+    assert store.get("demo_jobs",first)["benchmark_namespace"]==first
+    assert store.get("demo_jobs",second)["benchmark_namespace"] is None
 
 
 def test_pdf_validation_on_real_fixture():

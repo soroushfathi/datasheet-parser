@@ -1,0 +1,329 @@
+{
+  "version": "ams1117-runtime-comparison-1",
+  "probe_scope": "Visually source-audited presence probes plus manual role/conditions/connectivity checks; not a complete human gold standard or accuracy percentage",
+  "target_alignment": {
+    "same_package": true,
+    "before": {
+      "id": "2748fb558fa29e8f",
+      "manufacturer": "Advanced Monolithic Systems, Inc.",
+      "part_number": "AMS1117",
+      "ordering_code": "AMS1117CD",
+      "package_name": "TO-252",
+      "package_code": "CD",
+      "temperature_grade": null,
+      "document_revision": null,
+      "evidence_ids": [
+        "d73a5b35bfdc0d3b9a738ab2:p1:t1"
+      ],
+      "status": "supported",
+      "reason": "Printed ordering-table entry; -40 to 125°C is an operating junction range, not a named grade."
+    },
+    "after": {
+      "id": "73cf85bc5caf972d",
+      "manufacturer": "Advanced Monolithic Systems, Inc.",
+      "part_number": "AMS1117",
+      "ordering_code": "AMS1117CD",
+      "package_name": "TO-252",
+      "package_code": "CD",
+      "temperature_grade": null,
+      "document_revision": null,
+      "evidence_ids": [
+        "8af01d117d44d4e3799b62f2:p1:t1",
+        "8af01d117d44d4e3799b62f2:p1:l51"
+      ],
+      "status": "supported",
+      "reason": "Printed ordering-table entry; no named temperature grade."
+    }
+  },
+  "before_run": "4586e0802386442d",
+  "after_run": "14a74fcf69f74d9b",
+  "numeric_probes": [
+    {
+      "id": "absolute_vin",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.1"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "storage_low",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.8"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "storage_high",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.8"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "junction_low",
+      "source_page": 1,
+      "status": "located",
+      "claim_ids": [
+        "4.3"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "junction_high",
+      "source_page": 1,
+      "status": "located",
+      "claim_ids": [
+        "4.3"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "theta_ja_to252",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "theta_jc",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "solder_temp",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "17.1"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "reference_typ",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "reference_room_min",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "reference_room_max",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "reference_full_min",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "reference_full_max",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "minimum_load_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "minimum_load_max",
+      "source_page": 3,
+      "status": "located",
+      "claim_ids": [
+        "9.12"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "adjust_current_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "adjust_current_full_max",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "psrr_min",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "psrr_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "thermal_shutdown",
+      "source_page": 4,
+      "status": "located",
+      "claim_ids": [
+        "13.3"
+      ],
+      "before": "located",
+      "after": "located",
+      "change": "unchanged"
+    },
+    {
+      "id": "output_capacitor",
+      "source_page": 4,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "manual_check",
+      "after": "manual_check",
+      "change": "unchanged"
+    },
+    {
+      "id": "to252_body_width_min",
+      "source_page": 7,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "located",
+      "after": "manual_check",
+      "change": "regression_candidate"
+    },
+    {
+      "id": "to252_body_width_max",
+      "source_page": 7,
+      "status": "manual_check",
+      "claim_ids": [],
+      "before": "located",
+      "after": "manual_check",
+      "change": "regression_candidate"
+    }
+  ],
+  "manual_probes": [
+    {
+      "id": "catalog",
+      "page": 1,
+      "expected": "21 explicit entries, ordering row order with TO252 first; first AMS1117CD, TO-252 (D), adjustable. Junction operating temperature is not an inferred ordering grade."
+    },
+    {
+      "id": "pins",
+      "page": 1,
+      "expected": "1=GND/ADJ, 2=VOUT, 3=VIN; TO252 front view and tab=output. No SO8 NC pins copied."
+    },
+    {
+      "id": "circuit_edges",
+      "page": 4,
+      "expected": "R1 OUT-ADJ, R2 ADJ-GND; CADJ 10uF, COUT 22uF; D1 OUT-IN protection. Physical mapping only if observed; no invented resistor values."
+    },
+    {
+      "id": "adjustable_formula",
+      "page": 4,
+      "expected": "VOUT=VREF*(1+R2/R1)+IADJ*R2; figure IADJ 50uA distinct from table typical 55uA."
+    },
+    {
+      "id": "variant_applicability",
+      "page": 3,
+      "expected": "Fixed-suffix-only dropout/current-limit/quiescent table rows must not become unqualified adjustable guarantees."
+    },
+    {
+      "id": "noise_frequency",
+      "page": 3,
+      "expected": "10Hz..10kHz is output-noise test bandwidth; ripple rejection 120Hz is a condition. Neither implies clocks or timing interfaces."
+    },
+    {
+      "id": "pcb_thermal",
+      "page": 5,
+      "expected": "Copper-dependent thetaJA values55/55/65/80/60/65 do not replace TO252 table thetaJA80 without their conditions."
+    },
+    {
+      "id": "performance_plots",
+      "page": 6,
+      "expected": "Six real plots; typical curves are not guaranteed numeric limits."
+    },
+    {
+      "id": "mechanical",
+      "page": 7,
+      "expected": "TO252 dimensions only; inches(mm) pairs, distinguish body dimensions and overall span. SO8 p8 and SOT223 dimensions not applied."
+    }
+  ],
+  "limits": [
+    "Regex/number presence does not certify numeric role, qualifiers or every circuit edge.",
+    "Manual_check can mean naming/representation mismatch; inspect cited source and output.",
+    "These probes are not a complete gold standard and cannot prove universal no-regression.",
+    "Some qualifier/interpretation errors remain: the fresh9.2 output-current statement drops the general-description up-to bound, and pin/table/plot coverage is incomplete. No universal no-quality-loss claim follows from these probes.",
+    "Some qualifier/interpretation errors remain: the fresh9.2 output-current statement drops the general-description up-to bound, and pin/table/plot coverage is incomplete. No universal no-quality-loss claim follows from these probes."
+  ],
+  "manual_adjudication": [
+    {
+      "probe_ids": [
+        "to252_body_width_min",
+        "to252_body_width_max"
+      ],
+      "outcome": "representation_mismatch_not_numeric_loss",
+      "detail": "Fresh claim7.2 retains0.255-0.265(6.48-6.73); unit is inches(millimeters), while the presence matcher expects literal mm. The two raw regression candidates do not prove loss of the width values."
+    }
+  ]
+}

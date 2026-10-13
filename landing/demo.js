@@ -34,7 +34,7 @@ $("upload-form").addEventListener("submit", async e=>{
   if(file.size>20*1024*1024){text("form-error","حداکثر حجم فایل ۲۰ مگابایت است.");return;}
   busy=true; $("submit").disabled=true; text("submit","در حال آپلود…");text("form-error","");
   try{
-    const body=new FormData();body.append("file",file);const r=await fetch("/api/jobs",{method:"POST",body});
+    const body=new FormData();body.append("file",file);const fresh=new URL(document.URL).searchParams.get("fresh")==="1";if(fresh)body.append("fresh_run","true");const r=await fetch(`/api/jobs${fresh ? "?fresh=true" : ""}`,{method:"POST",body});
     if(!r.ok)throw new Error(await readError(r));
     const job=await r.json();jobId=job.id;cursor=0;startedAt=null;finishedAt=null;
     history.replaceState(null,"",`?job=${jobId}`);$("log").replaceChildren();$("target-card").hidden=true;$("result-panel").hidden=true;$("live-output").hidden=true;$("resume").hidden=true;partialSignature="";text("elapsed","00:00");text("completed","0 / 51");$("progress").value=0;
@@ -54,13 +54,13 @@ async function poll(){
     const r=await fetch(`/api/jobs/${jobId}?after=${cursor}`,{cache:"no-store"});if(!r.ok)throw new Error(await readError(r));const job=await r.json();
     text("connection","CONNECTED");text("model",job.model);text("command-file",job.filename);
     for(const e of job.events){appendLog(e);cursor=Math.max(cursor,e.sequence);}
-    startedAt=job.started_at || job.created_at;finishedAt=job.finished_at;clock();
+    startedAt=job.attempt_started_at || job.started_at || job.created_at;finishedAt=job.finished_at;clock();
     let count=0;for(const [key,status] of Object.entries(job.stages)){const dot=$(key.replace(":","-"));if(dot){dot.className=`stage-dot ${status}`;dot.title=`${key}: ${status}`;}if(status==="completed")count++;}
     if(job.partial_sections?.length && JSON.stringify(job.partial_sections)!==partialSignature){
       const firstPreview=!partialSignature;partialSignature=JSON.stringify(job.partial_sections);
       const opened=new Set([...$("partial-sections").querySelectorAll("details[open]")].map(el=>el.dataset.section));
       $("live-output").hidden=false;$("partial-sections").replaceChildren();
-      for(const section of job.partial_sections){const item=make("details");item.dataset.section=String(section.section_id);item.open=opened.has(item.dataset.section) || (firstPreview && section===job.partial_sections[0]);item.append(make("summary","",`${section.section_id}. ${names[section.section_id-1]} · ${section.claims} ادعا · ${section.reviewed ? "بازبینی انجام شد" : "در انتظار بازبینی"}`));
+      for(const section of job.partial_sections){const item=make("details");item.dataset.section=String(section.section_id);item.open=opened.has(item.dataset.section) || (firstPreview && section===job.partial_sections[0]);item.append(make("summary","",`${section.section_id}. ${names[section.section_id-1]} · ${section.claims} ادعا · ${section.review_method === "skipped_no_source" ? "بازبینی انجام نشد؛ شاهد ارائه نشده" : section.review_method === "declined_source_inspection" ? "بازبین شاهدی را تأیید نکرد؛ نیازمند بررسی" : section.reviewed ? "بازبینی انجام شد" : "در انتظار بازبینی"}`));
         for(const fact of section.preview)item.append(make("p","result-detail",`${fact.parameter}: ${fact.value}`));$("partial-sections").append(item);}
     }
     text("completed",`${count} / 51`);$("progress").value=count;

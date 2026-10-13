@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
@@ -16,10 +16,11 @@ from threading import Lock
 from typing import Protocol
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JSONSchemaError
 from pydantic import BaseModel
 
 from .config import Settings, resolve_codex_executable
-from .token_budget import request_input_metrics
+from .token_budget import request_input_metrics, serialized_prompt
 
 _FOLDER_LOCKS = {}
 _FOLDER_LOCKS_GUARD = Lock()
@@ -97,7 +98,7 @@ class LLMRequest:
     def fingerprint(self, model: str, reasoning: str) -> str:
         data = {
             "task": self.task,
-            "prompt": self.prompt,
+            "prompt": serialized_prompt(self.prompt, self.schema, model),
             "schema": self.schema,
             "image_hashes": [sha256(p.read_bytes()).hexdigest() for p in self.images],
             "model": model,
@@ -127,6 +128,7 @@ class RecordedProvider:
             return self._generate(request, key)
 
     def _generate(self, request: LLMRequest, key: str) -> dict:
+        request = replace(request, prompt=serialized_prompt(request.prompt, request.schema, self.settings.model))
         self.last_record = {}
         folder = self.root / self.name / key
         folder.mkdir(parents=True, exist_ok=True)
@@ -190,7 +192,14 @@ class RecordedProvider:
             (folder / "attempts.json").unlink(missing_ok=True)
             execute_started = True
             response, telemetry = self.execute(request, folder, images)
-            Draft202012Validator(request.schema).validate(response)
+            try:
+                Draft202012Validator(request.schema).validate(response)
+            except JSONSchemaError:
+                # Private audit artifact only; a nonconforming router response is
+                # never a successful checkpoint or public progress message.
+                (folder / "unvalidated-response.json").write_text(
+                    json.dumps(response, ensure_ascii=False), encoding="utf-8")
+                raise
             (folder / "response.json").write_text(
                 json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8"
             )
@@ -435,6 +444,12 @@ class OpenAIChatProvider(RecordedProvider):
         # The section budget describes JSON, while reasoning consumes this API's
         # same total output allowance. Reserve room without relaxing input bounds.
         cap = min(32768, (request.output_budget or 16000) + 8192)
+        if self.settings.llm_stage_deadline:
+            import asyncio
+
+            from .stream_deadline import execute_stream
+            return asyncio.run(execute_stream(self.settings, request, folder, content, cap,
+                getattr(self, "progress", lambda *args, **kwargs: None)))
         attempts = []
         with OpenAI(timeout=self.settings.llm_timeout, max_retries=0) as client:
             for number in range(1, self.settings.llm_attempts + 1):

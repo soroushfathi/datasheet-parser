@@ -111,7 +111,7 @@ def test_quality_scoped_inventory_is_exact_routing_only_and_included_in_prefligh
     assert "Missing fact:" in prepared["prompt"] and "Missing condition:" in prepared["prompt"]
     actual = request_input_metrics(POLICY + prepared["prompt"] + (
         f"\nOutput token target: {prepared['output_budget']}. Be concise; preserve facts and conditions."
-    ), strict_schema(Review), packet.images)
+    ), strict_schema(prepared["response_model"]), packet.images)
     assert actual == prepared["metrics"]["serialized_preflight"]
     assert prepared["metrics"]["review_presence_index_claims"] == len(expected)
     assert prepared["metrics"]["review_presence_index_tokens"] > 0

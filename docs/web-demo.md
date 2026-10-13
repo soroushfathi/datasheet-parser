@@ -1,7 +1,7 @@
 # Live PDF sample page
 
 The sample page runs the existing `budget-v1` extraction pipeline through the
-supplied API router, using **`openai/gpt-5.5`, medium reasoning, three inference
+supplied API router, using **`cx/gpt-6-sol`, medium reasoning, three inference
 workers**. It is separate from the static case study and the Codex CLI workflow.
 
 Public page: http://185.243.48.232:8095
@@ -78,7 +78,7 @@ auditable in result metadata. Earlier jobs retain their stored versions on resum
 uv sync --extra web --extra dev
 # Set these in a private, ignored environment file or the process environment:
 # DATASHEET_PROVIDER=openai-chat
-# DATASHEET_MODEL=openai/gpt-5.5
+# DATASHEET_MODEL=cx/gpt-6-sol
 # DATASHEET_REASONING=medium
 # DATASHEET_WORKERS=3
 # DATASHEET_DATABASE=datasheet_demo
@@ -243,3 +243,140 @@ is fabricated to bypass validation.
 The fix passed 481 offline tests and Ruff. Browser verification confirmed that
 the affected job displays the specific message and an enabled Continue button;
 the button was not pressed during the discovery-only verification.
+
+## Review scope and bounded streaming
+
+The AMS1117 section 12 failure was traced to an empty review packet: the original
+reader inspected 32 regions, but absence findings had no positive citations, so
+the review planner discarded that scope. Raw target provenance IDs were still in
+the prompt and the model cited them despite their absence from the source packet.
+
+`review_safety.py` keeps target identity separate from source citations and retains
+previously supplied reader evidence for negative/uncertain findings without cited
+claims. No automatic evidence expansion or larger input cap is introduced. Truly
+empty reads/reviews are performed by code, remain unresolved, and explicitly say
+`skipped_no_source`; they do not support claims or fabricate inspected regions.
+The UI distinguishes this state from a performed source review.
+
+`Engine.validated_call` quarantines a schema-valid response that fails semantic
+source/claim checks before allowing one bounded correction with the same evidence.
+The raw rejected checkpoint is archived privately. A correction that cannot fit the
+unchanged input cap is not sent. Known canonical region IDs are accepted only if
+they are exactly in that request's source allowlist; target provenance alone is
+never sufficient. Completed section/review records remain reusable.
+
+For `openai-chat`, `DATASHEET_LLM_STAGE_DEADLINE` enables a cancellable async
+transport. Its monotonic wall deadline includes SSE heartbeats, retries and backoff;
+the stream and client close on cancellation. Semantic correction shares the same
+remaining wall allowance. The demo uses a 240-second total allowance, a 240-second
+attempt limit and at most two transport attempts. Network phase timeouts permit a
+quiet reasoning phase within that allowance; they are not the total wall deadline.
+Attempt start/failure, first event and first content are safe progress events, with
+no prompt/body/credentials in public logs.
+
+`DATASHEET_ISOLATE_STAGE_FAILURES=true` freezes `failure_isolation=section-v1` in
+new runs. Recoverable section failures block their dependencies while independent
+sections finish. Authentication/storage/internal failures retain fail-fast behavior.
+A partial run cannot be exported as a complete result. Existing run policies remain
+unchanged unless an explicit repair migration is recorded.
+
+Failed discovery calls caused by transport, deadline or quota errors can also be
+manually resumed when a complete parse was already saved. A pre-run recovery uses
+the current configured model and updates its displayed model. Existing runs retain
+their frozen provider/model/reasoning; a changed demo default does not rewrite them.
+Authentication, validation and budget failures before a run remain non-resumable.
+
+The API accepts `POST /api/jobs?fresh=true` for a cold preparation/inference test.
+This records a unique parse namespace for the same unchanged PDF bytes, rebuilding
+the parse rather than overwriting or reusing earlier records. The page's `?fresh=1`
+mode forwards this option during upload. Runtime comparisons must verify actual
+render events and checkpoint telemetry, not infer cold execution from a new job ID.
+The UI clock uses the latest processing attempt, while benchmark reports measure
+the whole upload-to-final-output wall time, including retries/recovery/queue waits.
+
+Source-scoped AMS1117 comparison probes are in
+`references/evaluations/AMS1117-SOT89-source-probes.json`; run
+`scripts/compare_ams_runtime.py` against the recovered and fresh JSONs. All eight
+PDF pages were visually inspected for these probes. They are regression checks,
+not a full human gold standard, and numeric/regex matches require manual review
+of roles, qualifiers and connectivity before claiming engineering correctness.
+
+An explicit source-inspection refusal with no supported claims is retained as
+`declined_source_inspection`, with unresolved issues for its requirements and the
+raw review in metadata. It is not source-reviewed. Unknown source/claim references
+remain errors. An archived response may be revalidated only against the exact same
+request fingerprint and the current semantic validator; changed evidence cannot
+reuse that response. Legacy target prompts retain their previous contracts.
+
+Quality reviews now use a request-specific JSON schema: supported claims and
+non-null issue claim references are restricted to original claim IDs, and issue
+requirements are restricted to the current review scope. An empty original claim
+list requires an empty support list. Errors in the independent reader or findings
+use a null claim reference with an explicit explanation. This prevents confusion
+such as returning `12.clocks` as a supported claim or `INDEPENDENT:6.4` as an
+original claim. The actual constrained schema is included in input preflight and
+checkpoint fingerprints for both ordinary and partitioned reviews. The semantic
+validator still checks claim/requirement associations and source allowlists.
+
+`numeric_source_guard.py` adds a necessary numeric-literal check at quality export.
+For text-backed numeric tables, proposed bounds absent from the claim's supplied,
+cited source are withheld and
+marked ambiguous, with the original model draft retained in audit metadata. Printed
+tolerances and scientific literals are recognized; formulas are not evaluated into
+invented ratings. This is a conservative guard, not a row/role/units certificate.
+For example, a truncated printed `.530` cannot silently become a clean `1.530`
+bound. The underlying extraction records and PDF evidence are preserved.
+Image-only tables and drawings are left to visual review. Exact SI prefix scaling
+is recognized for explicit unit-bearing literals. The guard does not validate row
+alignment or infer units for unlabeled table cells; those need separate checks.
+
+Comparisons must align model/package targets. Discovery can return a different first
+package when no ordering table fixes the order; package-specific measurements must
+then be checked against the selected package's source and excluded from a claimed
+cross-package regression score. Separate SOT-89 and TO-252 source probes are included.
+
+See [AMS1117 measured runtime and scoped quality checks](ams1117-runtime-validation.md)
+for actual job links, timing definitions and quality limitations. A failed run under
+30 minutes is not a successful full-output benchmark.
+
+## Compatible-route schema serialization (2026-10-13)
+
+The deployed model is `cx/gpt-6-sol` with medium reasoning. A vision/schema smoke
+passed, but an actual 21-target catalog request returned renamed keys despite
+native `response_format=json_schema`. This demonstrates that a small capability
+smoke alone cannot certify enforcement for production schemas. The route's internal
+handling is not observable, so the observed response establishes a contract failure,
+not which upstream component discarded or ignored the format.
+
+Requests for `cx/` models now repeat the exact JSON Schema in the text message while
+continuing to send native `response_format`. This is a serialization aid, never a
+relaxation of validation or a converter that guesses missing fields. Strict JSON
+Schema, source allowlists and semantic checks remain mandatory. The appended schema
+is included in token preflight, saved prompts and checkpoint fingerprints, including
+figure requests, compact/partitioned reviews and bounded semantic correction.
+Source text cannot suppress the appended contract. Existing non-`cx/` prompts retain
+their previous fingerprints.
+
+A failed discovery with a saved parse can be manually continued after a format or
+transport repair. It does not automatically queue another paid attempt. An existing
+run remains pinned to its recorded provider/model/reasoning when the server default
+changes; a discovery-only job displays the current model on manual recovery.
+
+The current demo uses 240 seconds for both attempt and total request wall allowance;
+an early retry shares that total. The earlier 180-second attempt cut a response that
+first produced content at 151 seconds. Increasing the attempt allowance does not
+increase the 240-second total cap or prove an under-30-minute complete-output SLA.
+
+The same live test exposed `gateway_timeout` inside an HTTP-200 SSE error event.
+The SDK raises `APIError` for that event, rather than `APIStatusError`; previously
+that bypassed transport retry and section isolation. Known stream gateway codes
+now receive bounded retry and retain a typed recoverable `gateway_error`. Unknown
+API error codes fail without a guessed retry. No upstream error message enters
+public progress or diagnostics. Tests cover both paths and strict validation.
+
+A Windows cache-sharing race found by the full offline suite is also covered:
+verification briefly retries a denied file open after atomic replacement, then
+checks the winning bytes' SHA-256. Corrupt or absent winners are never accepted.
+Validation of the deployed repairs: **512 offline tests passed** and
+`ruff check src tests scripts` passed. These verify software behavior, not model
+accuracy or an end-to-end latency guarantee.

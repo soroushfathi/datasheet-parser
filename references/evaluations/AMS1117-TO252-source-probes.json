@@ -1,0 +1,274 @@
+{
+  "version": "ams1117-to252-source-probes-1",
+  "scope": "Source-audited regression probes; not a complete human gold standard or aggregate accuracy metric",
+  "target": {
+    "part_number": "AMS1117",
+    "package_name": "TO-252-2L",
+    "ordering_code": null
+  },
+  "source_pages_visually_checked": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "numeric_probes": [
+    {
+      "id": "absolute_vin",
+      "page": 2,
+      "section": 3,
+      "parameter": "input.*(?:supply|voltage)|(?:supply|voltage).*input|VIN",
+      "value": 18,
+      "unit": "V",
+      "note": "Absolute maximum rating; not recommended VIN"
+    },
+    {
+      "id": "recommended_vin",
+      "page": 2,
+      "section": 4,
+      "parameter": "input|VIN",
+      "value": 12,
+      "unit": "V",
+      "note": "Unclassified Rating column, no invented MIN/TYP/MAX role"
+    },
+    {
+      "id": "tj_low",
+      "page": 2,
+      "section": 4,
+      "parameter": "junction|TJ",
+      "value": -40,
+      "unit": "°C"
+    },
+    {
+      "id": "tj_high",
+      "page": 2,
+      "section": 4,
+      "parameter": "junction|TJ",
+      "value": 125,
+      "unit": "°C"
+    },
+    {
+      "id": "to252_thermal",
+      "page": 2,
+      "section": 11,
+      "parameter": "ambient|θJA|Rja|thermal.*resistance",
+      "value": 86,
+      "unit": "°C/W",
+      "note": "TO-252-2L only; 102 and 88 belong to other packages",
+      "package_specific": true
+    },
+    {
+      "id": "esd_voltage",
+      "page": 2,
+      "section": 3,
+      "parameter": "ESD",
+      "value": 2000,
+      "unit": "V",
+      "note": "Minimum ESD tolerance, test model is unspecified"
+    },
+    {
+      "id": "solder_temperature",
+      "page": 2,
+      "section": 17,
+      "parameter": "lead|solder",
+      "value": 260,
+      "unit": "°C",
+      "condition": "5",
+      "note": "Lead soldering for 5 seconds, not a reflow profile"
+    },
+    {
+      "id": "reference_typical",
+      "page": 3,
+      "section": 9,
+      "parameter": "reference|VREF",
+      "value": 1.25,
+      "unit": "V",
+      "note": "AMS1117-ADJ only, conditions must remain explicit"
+    },
+    {
+      "id": "dropout_1a_typical",
+      "page": 3,
+      "section": 9,
+      "parameter": "dropout|Vdrop",
+      "value": 1.2,
+      "unit": "V",
+      "condition": "1 ?A|1000 ?mA"
+    },
+    {
+      "id": "dropout_1a_max",
+      "page": 3,
+      "section": 9,
+      "parameter": "dropout|Vdrop",
+      "value": 1.3,
+      "unit": "V",
+      "condition": "1 ?A|1000 ?mA"
+    },
+    {
+      "id": "quiescent_typical",
+      "page": 3,
+      "section": 9,
+      "parameter": "quiescent|Iq",
+      "value": 5,
+      "unit": "mA",
+      "condition": "4.25"
+    },
+    {
+      "id": "quiescent_max",
+      "page": 3,
+      "section": 9,
+      "parameter": "quiescent|Iq",
+      "value": 10,
+      "unit": "mA",
+      "condition": "6.5"
+    },
+    {
+      "id": "psrr_min",
+      "page": 3,
+      "section": 9,
+      "parameter": "ripple|PSRR",
+      "value": 60,
+      "unit": "dB",
+      "condition": "120"
+    },
+    {
+      "id": "psrr_typical",
+      "page": 3,
+      "section": 9,
+      "parameter": "ripple|PSRR",
+      "value": 75,
+      "unit": "dB",
+      "condition": "120"
+    },
+    {
+      "id": "adjust_current_typical",
+      "page": 3,
+      "section": 9,
+      "parameter": "adjust.*current|Iadj",
+      "value": 60,
+      "unit": "µA"
+    },
+    {
+      "id": "adjust_current_max",
+      "page": 3,
+      "section": 9,
+      "parameter": "adjust.*current|Iadj",
+      "value": 120,
+      "unit": "µA"
+    },
+    {
+      "id": "shutdown_typical",
+      "page": 3,
+      "section": 13,
+      "parameter": "thermal|shutdown|TSD",
+      "value": 150,
+      "unit": "°C"
+    },
+    {
+      "id": "current_limit_low",
+      "page": 3,
+      "section": 13,
+      "parameter": "current.*limit|Ilimit",
+      "value": 2.1,
+      "unit": "A"
+    },
+    {
+      "id": "current_limit_high",
+      "page": 3,
+      "section": 13,
+      "parameter": "current.*limit|Ilimit",
+      "value": 2.5,
+      "unit": "A"
+    },
+    {
+      "id": "output_capacitor",
+      "page": 4,
+      "section": 6,
+      "parameter": "output|capacitor|stability",
+      "value": 22,
+      "unit": "µF",
+      "condition": "tantalum"
+    },
+    {
+      "id": "to252_A_low",
+      "page": 8,
+      "section": 7,
+      "parameter": "item A|dimension A|outline A|body.*width",
+      "value": 6.4,
+      "unit": "mm",
+      "package_specific": true
+    },
+    {
+      "id": "to252_A_high",
+      "page": 8,
+      "section": 7,
+      "parameter": "item A|dimension A|outline A|body.*width",
+      "value": 6.7,
+      "unit": "mm",
+      "package_specific": true
+    },
+    {
+      "id": "to252_J_low",
+      "page": 8,
+      "section": 7,
+      "parameter": "item J|dimension J|outline J",
+      "value": 2.2,
+      "unit": "mm",
+      "package_specific": true
+    },
+    {
+      "id": "to252_J_high",
+      "page": 8,
+      "section": 7,
+      "parameter": "item J|dimension J|outline J",
+      "value": 2.4,
+      "unit": "mm",
+      "package_specific": true
+    }
+  ],
+  "manual_probes": [
+    {
+      "id": "pins",
+      "page": 4,
+      "expected": "1=GND/ADJ; 2=VOUT; 3=VIN"
+    },
+    {
+      "id": "fixed_application",
+      "page": 5,
+      "expected": "VIN-GND 10uF; VOUT-GND 22uF; fixed GND pin to ground"
+    },
+    {
+      "id": "adjustable_application",
+      "page": 5,
+      "expected": "R1 VOUT-ADJ; R2 ADJ-GND; CIN VIN-GND 10uF; COUT VOUT-GND 22uF"
+    },
+    {
+      "id": "adjustable_formula",
+      "page": 5,
+      "expected": "VOUT=VREF*(1+R2/R1)+IADJ*R2"
+    },
+    {
+      "id": "variant_bounds",
+      "page": 3,
+      "expected": "Do not repair visibly malformed .530/.746 etc into invented numbers; retain uncertainty and variant conditions"
+    },
+    {
+      "id": "source_unit_error",
+      "page": 2,
+      "expected": "Storage temperature row prints V; preserve discrepancy instead of silently treating it as clean Celsius"
+    },
+    {
+      "id": "foreign_package_graphs",
+      "page": 6,
+      "expected": "TO-252 power plot is package-applicable; SOT-223 power plot is a different package. No guaranteed limits may be invented from plot traces."
+    },
+    {
+      "id": "no_fabricated_interfaces",
+      "page": 1,
+      "expected": "No invented UART, USB, protocol, address, clock or reset specifications"
+    }
+  ]
+}

@@ -149,10 +149,23 @@ class MemoryStore:
             return self.blobs[identifier]
 
 
+def _cache_bytes(path: Path) -> bytes:
+    # Windows can briefly deny opening an atomically replaced destination.
+    # Wait only for that sharing race, and still verify the winner's exact hash.
+    deadline = monotonic() + 1.0
+    while True:
+        try:
+            return path.read_bytes()
+        except PermissionError:
+            if monotonic() >= deadline:
+                raise
+            sleep(0.01)
+
+
 def materialize(store: Store, identifier: str, cache: Path, suffix: str) -> Path:
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / f"{identifier}{suffix}"
-    if not path.exists() or artifact_id(path.read_bytes()) != identifier:
+    if not path.exists() or artifact_id(_cache_bytes(path)) != identifier:
         data = store.read_artifact(identifier)
         if artifact_id(data) != identifier:
             raise ValueError("Artifact checksum mismatch")
@@ -165,7 +178,7 @@ def materialize(store: Store, identifier: str, cache: Path, suffix: str) -> Path
             except (FileExistsError, PermissionError):
                 # Windows can deny replacing a winner while another thread verifies it.
                 # Accept that race only after independently checking the published content.
-                if not path.exists() or artifact_id(path.read_bytes()) != identifier:
+                if not path.exists() or artifact_id(_cache_bytes(path)) != identifier:
                     raise
         finally:
             temporary.unlink(missing_ok=True)

@@ -26,6 +26,22 @@ def setup_scheduler(tmp_path, workers=2, optimization="budget-v1"):
     return engine, store, store.get("runs", run_id)
 
 
+def test_isolated_validation_failure_finishes_unrelated_section(tmp_path, monkeypatch):
+    engine, store, run = setup_scheduler(tmp_path, workers=1)
+    run["failure_isolation"] = "section-v1"
+    store.put("runs", run)
+    def callback(worker, run, sid, role):
+        if sid == 1 and role == "extract":
+            raise ValueError("invalid source references")
+    fake_stages(monkeypatch,store,callback)
+    with pytest.raises(ValueError):
+        engine.resume(run["id"],[1,3])
+    assert store.get("reviews",f"{run['id']}:3")
+    assert store.get("runs",run["id"])["status"] == "failed"
+    assert any(e["stage"]=="review:1" and e["status"]=="blocked"
+               for e in store.find("events",{"run_id":run["id"]}))
+
+
 def fake_stages(monkeypatch, store, callback=lambda worker, run, sid, role: None):
     def stage(worker, run, sid, role):
         callback(worker, run, sid, role)
@@ -238,6 +254,31 @@ def test_concurrent_materialization_never_publishes_partial_files(tmp_path, monk
         release.set()
         assert [future.result() for future in futures] == [path, path]
     assert artifact_id(path.read_bytes()) == identifier
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_materialization_verifies_winner_after_transient_windows_read_lock(tmp_path, monkeypatch):
+    store = MemoryStore()
+    identifier = store.artifact(b"original", "image/png", "fixture.png")
+    destination = tmp_path/f"{identifier}.png"
+    original_read = Path.read_bytes
+    reads = []
+
+    def denied_replace(temporary, target):
+        Path(target).write_bytes(b"original")
+        raise PermissionError("Windows sharing race")
+
+    def transient_read(path):
+        if path == destination:
+            reads.append(path)
+            if len(reads) == 1:
+                raise PermissionError("Windows reader holds destination")
+        return original_read(path)
+
+    monkeypatch.setattr(Path,"replace",denied_replace)
+    monkeypatch.setattr(Path,"read_bytes",transient_read)
+    assert materialize(store,identifier,tmp_path,".png") == destination
+    assert len(reads) == 2 and artifact_id(original_read(destination)) == identifier
     assert not list(tmp_path.glob("*.tmp"))
 
 

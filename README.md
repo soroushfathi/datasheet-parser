@@ -10,10 +10,14 @@ recorded token/time usage and future-work accordions. Source and deployment deta
 are in [`landing/README.md`](landing/README.md). The page serves static files only.
 
 Live PDF sample: [upload a datasheet](http://185.243.48.232:8095). This separate service
-uses the supplied OpenAI-compatible router (`openai/gpt-5.5`, medium reasoning),
+uses the supplied OpenAI-compatible router (`cx/gpt-6-sol`, medium reasoning),
 automatically selects the first discovered model/package entry, shows real progress,
 and offers the complete 17-section JSON. See [web demo setup and deployment](docs/web-demo.md).
 The API key stays on the server; it is never embedded in the page or committed.
+The [employer PDF / GPT-6 Sol validation report](docs/employer-sol-validation.md) records
+actual job links, transport repairs, runtime measurements and remaining source-coverage limits.
+The final-profile employer PDF test completed in **9m29s** with 17 sections/51 requirements;
+its result still needs source review. This is a single measured sample, not an accuracy or latency guarantee.
 
 New optimized runs use `quality-v1`: source glyph repair, an initial inventory of
 application figures, independent reading and review per figure, source-grounded
@@ -22,6 +26,10 @@ runs keep their original version. See [quality changes and before/after validati
 The [CY7C64225 live comparison](docs/quality-v1.md#cy7c64225-live-comparison-2026-10-12)
 records improved coverage and source values alongside remaining errors: all seven
 application figures are now included, while the output still requires review.
+Negative/uncertain findings retain the readers' inspected evidence during review;
+target provenance is separate from claim citations. The live API also supports
+cancellable stream/retry deadlines and isolated section failures. See
+[review scope and bounded streaming](docs/web-demo.md#review-scope-and-bounded-streaming).
 Oversized reviews keep the fixed input cap and split by complete requirements,
 repeating the same source evidence in each part. Validated parts resume independently;
 final review completes only after all parts merge. The page distinguishes program
@@ -540,4 +548,7 @@ work directory and LLM provider in the environment. `deploy/Dockerfile` packages
 worker paths. Codex subscription execution requires a separately installed, authenticated Codex
 runtime on the deployment host; it is not bundled with the Python container.
 
-The current work is local development against dana's development database, not a deployed service.
+The [live upload demo](http://185.243.48.232:8095/) and
+[architecture landing](http://185.243.48.232:8094/) are deployed on dana as separate
+services. See [demo operations and measured limitations](docs/web-demo.md) for
+deployment settings, recovery behavior and benchmark results.

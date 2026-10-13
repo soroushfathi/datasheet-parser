@@ -34,12 +34,28 @@ def estimate_image_tokens(width: int, height: int) -> int:
     return 85 + 170 * math.ceil(width / 512) * math.ceil(height / 512)
 
 
-def request_input_metrics(prompt, schema, images):
+def serialized_prompt(prompt, schema, model=None):
+    """Some compatible routes ignore native response_format; repeat its exact contract.
+
+    This is serialization only. The same strict validator remains mandatory.
+    Include it in preflight and fingerprints, never adapt a malformed response.
+    """
+    import json
+
+    marker = "\nREQUIRED_OUTPUT_JSON_SCHEMA:\n"
+    if model and model.startswith("cx/"):
+        return (prompt + marker + json.dumps(schema, ensure_ascii=False, separators=(",", ":"))
+                + "\nReturn ONLY JSON matching this schema, including every required field. "
+                "Do not rename keys or add fields. Keep explanations concise.")
+    return prompt
+
+
+def request_input_metrics(prompt, schema, images, *, model=None):
     import json
 
     from PIL import Image
 
-    prompt_tokens = estimate_text_tokens(prompt)
+    prompt_tokens = estimate_text_tokens(serialized_prompt(prompt, schema, model))
     schema_tokens = estimate_text_tokens(json.dumps(schema))
     dimensions = []
     for path in images:

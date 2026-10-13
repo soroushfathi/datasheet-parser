@@ -16,6 +16,9 @@ class Settings(BaseModel):
     reasoning: str = "high"
     llm_timeout: int = 600
     llm_attempts: int = Field(default=3, ge=1, le=5)
+    llm_stage_deadline: float = Field(default=0, ge=0)
+    llm_attempt_deadline: float = Field(default=180, gt=0)
+    isolate_stage_failures: bool = False
     codex_proxy: str | None = Field(default=None, repr=False)
     codex_executable: str | None = None
     pipeline: Literal["legacy", "retrieval-v2"] = "retrieval-v2"
@@ -44,6 +47,9 @@ class Settings(BaseModel):
             reasoning=os.getenv("DATASHEET_REASONING", "high"),
             llm_timeout=int(os.getenv("DATASHEET_LLM_TIMEOUT", "600")),
             llm_attempts=int(os.getenv("DATASHEET_LLM_ATTEMPTS", "3")),
+            llm_stage_deadline=float(os.getenv("DATASHEET_LLM_STAGE_DEADLINE", "0")),
+            llm_attempt_deadline=float(os.getenv("DATASHEET_LLM_ATTEMPT_DEADLINE", "180")),
+            isolate_stage_failures=os.getenv("DATASHEET_ISOLATE_STAGE_FAILURES", "false").lower() == "true",
             codex_proxy=os.getenv("DATASHEET_CODEX_PROXY") or None,
             codex_executable=os.getenv("DATASHEET_CODEX_EXECUTABLE") or None,
             pipeline=os.getenv("DATASHEET_PIPELINE", "retrieval-v2"),

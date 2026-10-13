@@ -18,6 +18,7 @@ from .models import Review, Status
 from .providers import strict_schema
 from .requirements import SECTIONS, requirements
 from .retrieval import Retriever
+from .review_safety import review_contract, review_source_regions, target_identity
 from .token_budget import estimate_text_tokens, request_input_metrics
 from .validation import validate_section
 
@@ -37,7 +38,8 @@ class RetrievalWorkflow:
             return value
 
         values = [strict_schema(model), run["target"], requirements(sid), *(aliased(a) for a in answers)]
-        return 2048 + sum(
+        schema_overhead = estimate_text_tokens(json.dumps(strict_schema(model))) if self.settings.model.startswith("cx/") else 0
+        return 2048 + schema_overhead + sum(
             estimate_text_tokens(json.dumps(value, ensure_ascii=False, separators=(",", ":")))
             for value in values
         )
@@ -228,12 +230,24 @@ class RetrievalWorkflow:
         packet = self.retrieval_packet(run, sid, complement=blind)
         if packet.metrics.get("mandatory_overflow"):
             raise ValueError(f"Section {sid}: required source bundle exceeds packet budget; inspect packet metrics.")
+        if run.get("quality_version") == "quality-v1" and not packet.allowed:
+            from .models import SectionResult
+            self.event(run["id"], stage, "started", kind="code")
+            section = SectionResult(section_id=sid, status=Status.AMBIGUOUS,
+                findings=[{"requirement_id":req, "status":"ambiguous", "evidence_ids":[],
+                           "reason":"No source supplied to this reader; absence is not established."}
+                          for req in requirements(sid)],
+                claims=[], pins=[], circuits=[], notes=["Source reading skipped: empty evidence packet."])
+            packet.metrics.update(source_read_method="skipped_no_source",
+                                  unresolved_evidence_requests=["source_not_supplied"])
+            self.event(run["id"], stage, "completed", kind="code", method="skipped_no_source")
+            return section, set(), [], packet.metrics, list(requirements(sid))
         # Keep the initial prompt unchanged so existing successful checkpoints remain reusable.
         # search_requests now describe retrieval gaps for diagnostics only.
         instruction = (
             f"\nRole: {SECTIONS[sid][1]}. {'Independently read' if blind else 'Extract'} "
             f"section {sid}: {SECTIONS[sid][0]}. You have no other extraction's answer.\n"
-            f"TARGET: {json.dumps(run['target'], ensure_ascii=False)}\n"
+            f"TARGET: {json.dumps(target_identity(run['target']) if run.get('quality_version')=='quality-v1' else run['target'], ensure_ascii=False)}\n"
             f"REQUIREMENTS: {json.dumps(requirements(sid))}\n"
             "One finding for each requirement. Extract all rows, qualifiers, units, variants and footnotes. "
             "Use evidence aliases exactly. Keep explanations empty for straightforward supported facts; "
@@ -263,7 +277,8 @@ class RetrievalWorkflow:
         metrics = {**packet.metrics, "contract_version": version}
         if run.get("packet_version") == "budget-v1":
             metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
-        output = self.call(
+        call = self.validated_call if run.get("quality_version") == "quality-v1" else self.call
+        raw = call(
             run["id"],
             stage,
             model,
@@ -271,8 +286,11 @@ class RetrievalWorkflow:
             packet.images,
             request_metrics=metrics,
             output_budget=output_budget(sid, "blind" if blind else "extract") if version == "compact-v2" else 16000,
+            **({"validate":lambda output: packet.decode(output.model_dump(mode="json"))}
+               if run.get("quality_version") == "quality-v1" else {}),
         )
-        raw = packet.decode(output.model_dump(mode="json"))
+        if run.get("quality_version") != "quality-v1":
+            raw = packet.decode(raw.model_dump(mode="json"))
         searches = raw["search_requests"]
         section = expand_section(raw, sid, run["target"]["id"], version=version)
         all_allowed = packet.allowed
@@ -399,13 +417,15 @@ class RetrievalWorkflow:
         request_requirements = requirements(sid)
         if scope is not None:
             request_requirements = {req: request_requirements[req] for req in scope}
+        original_claims = [c for c in record["section"]["claims"] if c["requirement_id"] in request_requirements]
+        response_model = review_contract(original_claims, request_requirements) if quality else Review
         dumps = (lambda value: json.dumps(value, ensure_ascii=False, separators=(",", ":"))) if optimized else json.dumps
         prompt = (
             "\nAudit original and independent extractions against source. Neither is authoritative. "
             "Check correctness, missing facts, qualifiers, conditions, wrong targets and absent decisions. "
             "List only supported original claim IDs and issues; no explanation for passed claims. "
             "Agreement alone is not proof. reviewed_region_ids are source aliases actually inspected.\n"
-            f"TARGET: {json.dumps(run['target'])}\nREQUIREMENTS: {json.dumps(request_requirements)}\n"
+            f"TARGET: {json.dumps(target_identity(run['target']) if quality else run['target'])}\nREQUIREMENTS: {json.dumps(request_requirements)}\n"
             f"ORIGINAL: {dumps(packet.encode(original))}\n"
             f"INDEPENDENT: {dumps(packet.encode(independent))}\n{packet.text}"
         )
@@ -443,6 +463,12 @@ class RetrievalWorkflow:
         presence_index = None
         if quality:
             prompt += (
+                "\nREFERENCE_RULES: supported_claim_ids and non-null issue.claim_id refer ONLY to "
+                "original claim IDs. Requirement IDs identify findings, not claims. An issue about "
+                "a finding, a missing fact or an independent-reader error has claim_id=null and "
+                "the appropriate requirement_id; describe the independent error in explanation. "
+                "If ORIGINAL_CLAIM_IDS is empty, supported_claim_ids MUST be [].\n"
+                f"ORIGINAL_CLAIM_IDS: {dumps([c['id'] for c in original_claims])}"
                 "\nReview quality v1: missing_fact means a fact absent from the entire ORIGINAL section, "
                 "not a fact recorded under another requirement. Read the complete relevant original "
                 "claim, including its conditions, before alleging a missing_condition. A limitation "
@@ -492,7 +518,7 @@ class RetrievalWorkflow:
             serialized = POLICY + prompt + (
                 f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
             )
-            exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+            exact_input = request_input_metrics(serialized, strict_schema(response_model), packet.images, model=self.settings.model)
             if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
                 # Change only draft serialization, never the evidence selection or cap.
                 # Preserve normal prompts/checkpoints for requests that already fit.
@@ -515,7 +541,7 @@ class RetrievalWorkflow:
                 serialized = POLICY + prompt + (
                     f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
                 )
-                exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+                exact_input = request_input_metrics(serialized, strict_schema(response_model), packet.images, model=self.settings.model)
                 if exact_input["input_tokens_estimate"] > run["retrieval_config"]["request_token_budget"]:
                     views = [columnar_review(packet.encode(original)), columnar_review(packet.encode(independent))]
                     pool, packed = shared_review_texts(views)
@@ -536,20 +562,21 @@ class RetrievalWorkflow:
                         serialized = POLICY + prompt + (
                             f"\nOutput token target: {generation_budget}. Be concise; preserve facts and conditions."
                         )
-                        exact_input = request_input_metrics(serialized, strict_schema(Review), packet.images)
+                        exact_input = request_input_metrics(serialized, strict_schema(response_model), packet.images, model=self.settings.model)
             metrics["serialized_preflight"] = exact_input
             metrics["request_token_budget"] = run["retrieval_config"]["request_token_budget"]
             if overflow:
                 metrics["reservation_warning"] = overflow
                 if exact_input["input_tokens_estimate"] <= run["retrieval_config"]["request_token_budget"]:
                     metrics["mandatory_overflow"] = {}
-        return {"prompt": prompt, "metrics": metrics, "output_budget": generation_budget,
+        return {"prompt": prompt, "metrics": metrics, "output_budget": generation_budget, "response_model": response_model,
                 "input_tokens_estimate": exact_input["input_tokens_estimate"] if optimized else 0}
 
     @staticmethod
-    def _validate_review_part(review, scope, claims):
+    def _validate_review_part(review, scope, claims, *, allow_declined=False):
         by_id = {c["id"]: c for c in claims}
-        if not review.reviewed_region_ids or not set(review.supported_claim_ids) <= set(by_id):
+        if ((not review.reviewed_region_ids and (review.supported_claim_ids or not allow_declined))
+                or not set(review.supported_claim_ids) <= set(by_id)):
             raise ValueError("Review contains unknown claims or has not inspected source")
         for issue in review.issues:
             if issue.requirement_id not in scope:
@@ -606,7 +633,7 @@ class RetrievalWorkflow:
         fingerprints = [LLMRequest(
             f"review:{sid}:part:{i}", POLICY + part["prompt"] + (
                 f"\nOutput token target: {part['output_budget']}. Be concise; preserve facts and conditions."
-            ), strict_schema(Review), packet.images, output_budget=part["output_budget"],
+            ), strict_schema(part["response_model"]), packet.images, output_budget=part["output_budget"],
         ).fingerprint(self.settings.model, self.settings.reasoning) for i, part in enumerate(plan, 1)]
         policy = ({"partition_reason": partition_reason,
                    "max_requirements_per_part": max_requirements_per_part} if partition_reason else {})
@@ -636,16 +663,19 @@ class RetrievalWorkflow:
                                        review_parts=len(plan), review_requirements=part["scope"])
                 if recovery:
                     part["metrics"]["gateway_504_recovery"] = recovery
-                parsed = self.call(
-                    run["id"], f"review:{sid}:part:{i}", Review, part["prompt"], packet.images,
+                def validate_part(parsed, scope=part["scope"], originals=claims):
+                    decoded = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
+                    self._validate_review_part(decoded, scope, originals, allow_declined=run.get("quality_version")=="quality-v1")
+                    return decoded
+                review = self.validated_call(
+                    run["id"], f"review:{sid}:part:{i}", part["response_model"], part["prompt"], packet.images,
                     request_metrics=part["metrics"], output_budget=part["output_budget"],
+                    validate=validate_part,
                 )
-                review = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
-                self._validate_review_part(review, part["scope"], claims)
                 self.store.put("review_parts", {"id": part_id, "run_id": run["id"], "section_id": sid,
                     "plan_hash": plan_hash, "part": i, "scope": part["scope"],
                     "review": review.model_dump(mode="json")})
-            self._validate_review_part(review, part["scope"], claims)
+            self._validate_review_part(review, part["scope"], claims, allow_declined=run.get("quality_version")=="quality-v1")
             if not (set(review.reviewed_region_ids) | cited_regions(review.model_dump(mode="json"))) <= packet.allowed:
                 raise ValueError("Saved review part cites unsupplied evidence")
             reviews.append(review)
@@ -680,6 +710,8 @@ class RetrievalWorkflow:
         optimized = run.get("packet_version") == "budget-v1"
         if optimized:
             required = cited_regions(record["section"]) | cited_regions(blind["section"])
+            if run.get("quality_version") == "quality-v1":
+                required = review_source_regions(record, blind, required)
             original = compact_review(record["section"], run["target"]["id"])
             independent = compact_review(blind["section"], run["target"]["id"])
         else:
@@ -690,6 +722,20 @@ class RetrievalWorkflow:
             reserved_tokens=self.request_reserved_tokens(run, sid, Review, (original, independent))
             if optimized else None,
         )
+        if run.get("quality_version") == "quality-v1" and not packet.allowed:
+            review = Review(supported_claim_ids=[], reviewed_region_ids=[], issues=[
+                {"category":"insufficient_evidence", "claim_id":None, "requirement_id":req,
+                 "severity":"warning", "evidence_ids":[],
+                 "explanation":"Source review not performed: no evidence supplied; requirement remains unresolved."}
+                for req in requirements(sid)])
+            row = {"id":key, "run_id":run["id"], "section_id":sid,
+                   **review.model_dump(mode="json"), "review_method":"skipped_no_source"}
+            self.store.put("reviews",row)
+            for req in requirements(sid):
+                cov = self.store.get("coverage", f"{run['id']}:{req}")
+                self.store.put("coverage", {**cov, "review_status":"skipped_no_source", "reviewed_region_ids":[]})
+            self.event(run["id"],f"review:{sid}","completed",kind="code",method="skipped_no_source")
+            return row
         prepared = self._prepare_review_request(run, sid, record, blind, packet, original, independent)
         overflow = packet.metrics.get("mandatory_overflow", {})
         if overflow and set(overflow) != {"total_tokens"}:
@@ -712,16 +758,26 @@ class RetrievalWorkflow:
                 partition_reason="gateway_504_recovery" if recovery else None, recovery=recovery,
             )
         else:
-            parsed = self.call(run["id"], f"review:{sid}", Review, prepared["prompt"], packet.images,
-                               request_metrics=prepared["metrics"], output_budget=prepared["output_budget"])
-            review = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
-            self._validate_review_part(review, requirements(sid), record["section"]["claims"])
+            def validate_review(parsed):
+                decoded = Review.model_validate(packet.decode(parsed.model_dump(mode="json")))
+                self._validate_review_part(decoded, requirements(sid), record["section"]["claims"], allow_declined=run.get("quality_version")=="quality-v1")
+                return decoded
+            review = self.validated_call(run["id"], f"review:{sid}", prepared["response_model"], prepared["prompt"], packet.images,
+                request_metrics=prepared["metrics"], output_budget=prepared["output_budget"], validate=validate_review)
         reconciliation = {}
+        if run.get("quality_version") == "quality-v1" and not review.reviewed_region_ids:
+            raw_review = review.model_dump(mode="json")
+            covered = {i.requirement_id for i in review.issues if i.category=="insufficient_evidence"}
+            from .models import ReviewIssue
+            review.issues.extend(ReviewIssue(category="insufficient_evidence",claim_id=None,requirement_id=req,
+                severity="warning",evidence_ids=[],explanation="Reviewer declined source inspection; this requirement was not source-reviewed.")
+                for req in requirements(sid) if req not in covered)
+            reconciliation.update(review_method="declined_source_inspection",raw_declined_review=raw_review)
         if run.get("quality_version") == "quality-v1":
             from .review_context import reconcile_review
 
             review, audit = reconcile_review(review, record["section"])
-            reconciliation = {"review_reconciliation": audit, "quality_version": "quality-v1"}
+            reconciliation.update(review_reconciliation=audit,quality_version="quality-v1")
         row = {"id": key, "run_id": run["id"], "section_id": sid, **review.model_dump(mode="json"), **partition}
         row.update(reconciliation)
         self.store.put("reviews", row)

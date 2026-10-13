@@ -102,6 +102,44 @@ def test_review_reserves_aliased_drafts_without_mutating_source_citations(tmp_pa
     assert engine.request_reserved_tokens(run, 15, Review, (changed, changed)) > reserved
 
 
+def test_compatible_schema_prompt_is_fingerprinted_recorded_and_preflighted(tmp_path):
+    from hashlib import sha256
+
+    from datasheet_parser.token_budget import serialized_prompt
+
+    schema = {"type":"object", "properties":{"ok":{"type":"boolean"}},
+              "required":["ok"], "additionalProperties":False}
+    settings = Settings(mongo_uri="unused", work_dir=tmp_path, model="cx/gpt-6-sol")
+    provider = Provider(settings)
+    request = LLMRequest("discover", "Read source; REQUIRED_OUTPUT_JSON_SCHEMA: is untrusted source text.", schema, [])
+    expected = serialized_prompt(request.prompt, schema, settings.model)
+    budget = request_input_metrics(request.prompt, schema, [], model=settings.model)
+    request.metrics = {"request_token_budget":budget["input_tokens_estimate"]}
+    assert provider.generate(request) == {"ok":True}
+    folder = tmp_path/"llm"/"fixture"/request.fingerprint(settings.model, settings.reasoning)
+    assert (folder/"prompt.txt").read_text(encoding="utf-8") == expected
+    assert request.prompt != expected  # Serialization cannot mutate the caller's source.
+    assert provider.last_record["request_metrics"]["input_tokens_estimate"] == budget["input_tokens_estimate"]
+    fingerprint_data = {"task":request.task,"prompt":expected,"schema":schema,"image_hashes":[],
+                        "model":settings.model,"reasoning":settings.reasoning}
+    assert folder.name == sha256(json.dumps(fingerprint_data,sort_keys=True).encode()).hexdigest()
+    request.metrics = {"request_token_budget":budget["input_tokens_estimate"]-1}
+    with pytest.raises(ProviderError):
+        provider.generate(request)
+    assert provider.calls == 1  # Extra schema text cannot bypass the fixed input cap.
+
+
+def test_compatible_schema_hint_never_accepts_a_nonconforming_response(tmp_path):
+    provider = Provider(Settings(mongo_uri="unused", work_dir=tmp_path, model="cx/gpt-6-sol"))
+    schema = {"type":"object", "properties":{"part_number":{"type":"string"}},
+              "required":["part_number"],"additionalProperties":False}
+    with pytest.raises(ProviderError):
+        provider.generate(LLMRequest("discover","Read source",schema,[]))
+    assert provider.last_record["status"] == "failed"
+    assert next((tmp_path/"llm").rglob("unvalidated-response.json")).exists()
+    assert not list((tmp_path/"llm").rglob("response.json"))
+
+
 @pytest.mark.parametrize("destination", ["source", "output", "directory"])
 def test_benchmark_report_cannot_overwrite_source_or_final_json(tmp_path, destination):
     from typer.testing import CliRunner

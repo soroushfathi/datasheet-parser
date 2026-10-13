@@ -1,0 +1,192 @@
+{
+  "version": "employer-sol-live-validation-1",
+  "source_sha256": "189a2651878a87d590b768eaa9b44217a3fdf460352ce6ecaff127221282a3f0",
+  "model": "cx/gpt-6-sol",
+  "reasoning": "medium",
+  "workers": 3,
+  "job_id": "9def14037e64412f9392dee71dfd2235",
+  "run_id": "14a74fcf69f74d9b",
+  "parse_id": "8af01d117d44d4e3799b62f2",
+  "cold_preparation": true,
+  "rendered_pages": 8,
+  "recovered_inference_calls": 0,
+  "failed_inference_events": 0,
+  "manual_resumptions": 0,
+  "created_at": "2026-10-13T12:07:56.449727+00:00",
+  "finished_at": "2026-10-13T12:17:25.794308+00:00",
+  "upload_to_output_seconds": 569.344581,
+  "status": "needs_review",
+  "sections": 17,
+  "requirements": 51,
+  "claims": 144,
+  "diagnostics": 210,
+  "reported_usage_sum": {
+    "prompt_tokens": 598538,
+    "completion_tokens": 74070,
+    "total_tokens": 672608
+  },
+  "successful_inferences_including_discovery": 51,
+  "presence_probes": [
+    {
+      "id": "absolute_vin",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.1"
+      ]
+    },
+    {
+      "id": "storage_low",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.8"
+      ]
+    },
+    {
+      "id": "storage_high",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "3.8"
+      ]
+    },
+    {
+      "id": "junction_low",
+      "source_page": 1,
+      "status": "located",
+      "claim_ids": [
+        "4.3"
+      ]
+    },
+    {
+      "id": "junction_high",
+      "source_page": 1,
+      "status": "located",
+      "claim_ids": [
+        "4.3"
+      ]
+    },
+    {
+      "id": "theta_ja_to252",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "theta_jc",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "solder_temp",
+      "source_page": 2,
+      "status": "located",
+      "claim_ids": [
+        "17.1"
+      ]
+    },
+    {
+      "id": "reference_typ",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "reference_room_min",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "reference_room_max",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "reference_full_min",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "reference_full_max",
+      "source_page": 2,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "minimum_load_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "minimum_load_max",
+      "source_page": 3,
+      "status": "located",
+      "claim_ids": [
+        "9.12"
+      ]
+    },
+    {
+      "id": "adjust_current_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "adjust_current_full_max",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "psrr_min",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "psrr_typ",
+      "source_page": 3,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "thermal_shutdown",
+      "source_page": 4,
+      "status": "located",
+      "claim_ids": [
+        "13.3"
+      ]
+    },
+    {
+      "id": "output_capacitor",
+      "source_page": 4,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "to252_body_width_min",
+      "source_page": 7,
+      "status": "manual_check",
+      "claim_ids": []
+    },
+    {
+      "id": "to252_body_width_max",
+      "source_page": 7,
+      "status": "manual_check",
+      "claim_ids": []
+    }
+  ],
+  "unknown_export_evidence_ids": [],
+  "quality_limits": [
+    "Unresolved pinout, electrical-table and performance-plot recall.",
+    "Mechanical interpretation and current qualifiers still require source adjudication.",
+    "No full human gold standard for this source; no overall accuracy or no-regression certificate.",
+    "One cold sample does not guarantee a latency SLA across files/provider conditions."
+  ]
+}
